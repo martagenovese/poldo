@@ -2,7 +2,7 @@
 
 ## Descrizione
 
-Poldo è un'applicazione mobile che consente agli studenti di prenotare cibi e bevande dal bar della scuola in modo rapido e semplice. L'app elimina le code durante gli intervalli, permettendo agli studenti di ordinare in anticipo e ritirare i prodotti quando sono pronti.
+Poldo è un'applicazione web che consente agli studenti di prenotare cibi e bevande dal bar della scuola in modo rapido e semplice. L'app elimina le code durante gli intervalli, permettendo agli studenti di ordinare in anticipo e ritirare i prodotti quando sono pronti.
 
 ## Funzionalità principali
 
