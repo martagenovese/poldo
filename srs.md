@@ -5,6 +5,11 @@
 ### 1.1 Descrizione
 Poldo mira a risolvere il problema delle code durante gli intervalli scolastici, ottimizzando il processo di ordinazione e ritiro di cibi e bevande dal bar della scuola. L'applicazione faciliterà la gestione degli ordini sia dal lato utente (studenti e professori) che dal lato fornitore (gestore del bar).
 
+### 1.2 Team Sviluppatori
+- Marta Genovese
+- Giacomo Marconi
+- Francesco Miranda
+
 ### 1.2 Glossario
 
 | Termine | Definizione |
