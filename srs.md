@@ -10,7 +10,7 @@ Poldo mira a risolvere il problema delle code durante gli intervalli scolastici,
 - Giacomo Marconi
 - Francesco Miranda
 
-### 1.2 Glossario
+### 1.3 Glossario
 
 | Termine | Definizione |
 |---------|-------------|
