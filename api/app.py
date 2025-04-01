@@ -1,6 +1,12 @@
 from flask import Flask, request, jsonify
+import config as cfg
+
 
 app = Flask(__name__)
+
+if(not cfg.get_db()):
+    print("DB not set")
+    exit(1)
 
 # 1. Autenticazione e Gestione Utenti
 
