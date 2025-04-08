@@ -18,6 +18,8 @@
   "homepage": "https://github.com/martagenovese/poldo#readme",
   "description": "",
   "dependencies": {
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "path": "^0.12.7",
+    "winston": "^3.17.0"
   }
 }
