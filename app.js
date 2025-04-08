@@ -1,4 +1,5 @@
-require('dotenv').config();
+require('dotenv').config({ path: 'secrets.env' });
+
 const express = require('express');
 const logger = require('./utils/logger');
 const authRoutes = require('./routes/authRoutes');
@@ -18,11 +19,11 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use(authRoutes);
-app.use(adminRoutes);
-app.use(productRoutes);
-app.use(orderRoutes);
-app.use(reportRoutes);
+app.use("/v1/auth", authRoutes);
+//app.use(adminRoutes);
+app.use("/v1/prodotti", productRoutes);
+app.use('/v1/ordini', orderRoutes);
+//app.use(reportRoutes);
 
 // Error handling
 app.use((err, req, res, next) => {

@@ -1,26 +1,34 @@
 const jwt = require('jsonwebtoken');
-const { DB } = require('../config');
+const { DB } = require('../config/config');
 
 module.exports = {
     authenticateJWT: (req, res, next) => {
         const authHeader = req.headers.authorization;
         if (authHeader) {
             const token = authHeader.split(' ')[1];
+            console.log("token: " + token);
             jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-                if (err) return res.sendStatus(403);
+                console.log("err:" + err); 
+                if (err) 
+                    return res.sendStatus(403);
                 req.user = user;
+                console.log("user: " + JSON.stringify(req.user));
                 next();
             });
         } else {
-            res.sendStatus(401);
+            res.sendStatus(401);  
         }
     },
 
-    // Ruolo salvato nel token JWT, non ricerca ogni volta db (o si?)
     authorizeRole: (roles) => (req, res, next) => {
-        if (!roles.includes(req.user.role)) {
-            return res.status(403).json({ message: 'Unauthorized' });
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
         }
-        next();
+        
+        if (roles.includes(req.user.ruolo)) {
+            next();
+        } else {
+            res.status(403).json({ error: 'Forbidden' });
+        }
     }
 };
