@@ -57,8 +57,18 @@ router.get('/:id', async (req, res) => {
 router.post('/', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
     const { nome, prezzo, descrizione, tags, ingredienti, quantita} = req.body;
     if (!nome || !prezzo || !quantita || quantita < 0 || !descrizione || tags.length <= 0 || ingredienti.length <= 0) {
-        return res.status(400).json({ error: 'inserire nome, descrizione, prezzo, quantita, tag e ingredienti' });
+        return res.status(400).json({ error: 'Inserire nome, descrizione, prezzo, quantita, tag e ingredienti' });
     }
+
+
+    if(req.user.ruolo === 'admin'){
+        const {idGestione} = req.body;
+        if(!idGestione){
+            return res.status(400).json({ error: 'Inserire idGestione' });
+        }
+        req.user.idGestione = idGestione;
+    }
+
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
@@ -92,7 +102,14 @@ router.post('/', authenticateJWT, authorizeRole(['gestore', 'admin']), async (re
         res.status(201).json({ id: productId });
     } catch (error) {
         await connection.rollback();
-        console.error(error);
+        console.error("Errore inserimento prodotto: " + error);
+
+        if(error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ error: 'Prodotto già presente' });
+        }
+        if(error.code === 'ER_NO_REFERENCED_ROW_2') {
+            return res.status(404).json({ error: 'Gestione non trovata' });
+        }
         res.status(500).json({ error: 'Errore interno del server' });
     } finally {
         connection.release();
