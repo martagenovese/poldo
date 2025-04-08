@@ -1,6 +1,4 @@
 const winston = require('winston');
-const path = require('path');
-const { VIDEO_FOLDER } = require('../config/config');
 
 const logger = winston.createLogger({
     level: 'debug',
@@ -10,7 +8,7 @@ const logger = winston.createLogger({
     ),
     transports: [
         new winston.transports.File({ 
-            filename: path.join(VIDEO_FOLDER, 'poldo.log'),
+            filename: 'poldo.log',
             flags: 'a'
         }),
         new winston.transports.Console()
