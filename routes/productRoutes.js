@@ -22,7 +22,6 @@ router.get('/', async (req, res) => {
                 GROUP_CONCAT(DISTINCT pt.tag) as tags 
             FROM Prodotto p
             LEFT JOIN ProdottoTag pt ON p.idProdotto = pt.idProdotto
-            LEFT JOIN ProdottoIngrediente pi ON p.idProdotto = pi.idProdotto
             WHERE p.attivo = true
         `;
 
@@ -86,7 +85,6 @@ router.get('/', async (req, res) => {
         connection.release();
     }
 });
-
 
 router.get('/:id', async (req, res) => {
     const connection = await pool.getConnection();
@@ -231,10 +229,17 @@ router.put('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async (
     }
 });
 
-
-
 router.patch('/:id/setStatus', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
     const { attivo } = req.body;
+
+    if(req.user.ruolo === 'admin'){
+        const {idGestione} = req.body;
+        if(!idGestione){
+            return res.status(400).json({ error: 'Inserire idGestione' });
+        }
+        req.user.idGestione = idGestione;
+    }
+
     const connection = await pool.getConnection();
     try {
         const [result] = await connection.execute(
@@ -246,8 +251,11 @@ router.patch('/:id/setStatus', authenticateJWT, authorizeRole(['gestore', 'admin
             return res.status(404).json({ error: 'Prodotto non trovato o non tuo' });
         }
 
-        res.status(200).json({ message: 'Prodotto aggiunto con successo' });
-    } finally {
+        res.status(200).json({ message: 'Prodotto modificato con successo' });
+    } catch (error) {
+        console.error("Errore aggiornamento stato prodotto: " + error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }finally {
         connection.release();
     }
 });
