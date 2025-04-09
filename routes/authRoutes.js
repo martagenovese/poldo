@@ -8,8 +8,6 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const jwt = require('jsonwebtoken');
 
 
-
-
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -29,10 +27,12 @@ async (accessToken, refreshToken, profile, done) => {
         }
 
         const ruolo = profile.emails[0].value.endsWith('@studenti.marconiverona.it') ? 'studente' : 'prof';
-
+        
+        const classe = 0; 
+        
         const [newUser] = await connection.execute(
-            'INSERT INTO Utente (mail, google_id, ruolo, foto_url) VALUES (?, ?, ?, ?)',
-            [profile.emails[0].value, profile.id, ruolo, profile.photos[0].value]
+            'INSERT INTO Utente (mail, google_id, ruolo, foto_url, classe) VALUES (?, ?, ?, ?, ?)',
+            [profile.emails[0].value, profile.id, ruolo, profile.photos[0].value, classe]
         );
 
         newUser.id = newUser.insertId;
@@ -48,8 +48,6 @@ async (accessToken, refreshToken, profile, done) => {
 }));
 
 
-
-
 // Google OAuth
 router.get('/google', passport.authenticate('google', { 
     scope: ['profile', 'email'], 
@@ -60,7 +58,7 @@ router.get('/google/callback', passport.authenticate('google', { failureRedirect
     const token = jwt.sign(
         { id: req.user.id, ruolo: req.user.ruolo },
         process.env.JWT_SECRET,
-        { expiresIn: '30m' }
+        { expiresIn: '1y' }
     );
     
     //TODO: change
@@ -87,7 +85,7 @@ router.post('/login', async (req, res) => {
         const token = jwt.sign(
             { idGestione: rows[0].idGestione, ruolo: 'gestore', id: rows[0].id },
             process.env.JWT_SECRET,
-            { expiresIn: '30m' }
+            { expiresIn: '1y' }
         );
         res.json({ token });
     } finally {

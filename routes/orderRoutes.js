@@ -3,414 +3,605 @@ const router = express.Router();
 const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
-router.get('/', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
-    const connection = await pool.getConnection();
-    try {
 
-        console.log('rows');
-
-        const [rows] = await connection.execute(`
-            SELECT 
-                oc.classe,
-                oc.nTurno,
-                p.idProdotto,
-                p.nome AS prodottoNome,
-                p.prezzo,
-                SUM(dos.quantita) AS quantitaTotale,
-                GROUP_CONCAT(DISTINCT t.nome) AS tags
-            FROM OrdineClasse oc
-            JOIN OrdineSingolo os ON oc.idOrdine = os.idOrdineClasse
-            JOIN DettagliOrdineSingolo dos ON os.idOrdine = dos.idOrdineSingolo
-            JOIN Prodotto p ON dos.idProdotto = p.idProdotto
-            LEFT JOIN ProdottoTag pt ON p.idProdotto = pt.idProdotto
-            LEFT JOIN Tag t ON pt.tag = t.nome
-            GROUP BY oc.classe, oc.nTurno, p.idProdotto
-            ORDER BY oc.classe, oc.nTurno
-        `);
-
-        console.log(rows);
-
-        // Raggruppa i risultati per classe e turno
-        const groupedOrders = rows.reduce((acc, row) => {
-            const key = `${row.classe}-${row.nTurno}`;
-            
-            if (!acc[key]) {
-                acc[key] = {
-                    classe: row.classe,
-                    nTurno: row.nTurno,
-                    prodotti: []
-                };
-            }
-            
-            acc[key].prodotti.push({
-                idProdotto: row.idProdotto,
-                nome: row.prodottoNome,
-                prezzo: row.prezzo,
-                quantita: row.quantitaTotale,
-                tags: row.tags ? row.tags.split(',') : []
-            });
-
-            return acc;
-        }, {});
-
-        res.json(Object.values(groupedOrders));
-        
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ error: 'Database error' });
-    } finally {
-        connection.release();
-    }
-});
-
-router.post('/', 
-    authenticateJWT, 
-    authorizeRole(['studente', 'prof', 'segreteria']), 
-    async (req, res) => {
-        const connection = await pool.getConnection();
-        await connection.beginTransaction();
-        
-        try {
-            const userId = req.user.idUtente;
-            const userRole = req.user.ruolo;
-            const { prodotti, idOrdineClasse, nTurno, giorno } = req.body;
-            const today = new Date().toISOString().split('T')[0];
-            
-            // Validazione di base
-            if (!prodotti || !Array.isArray(prodotti)) {
-                await connection.rollback();
-                return res.status(400).json({ error: 'Prodotti mancanti o non validi' });
-            }
-
-            let idClasseOrder;
-
-            if (userRole === 'studente') {
-                // Caso studente - ordine normale
-                if (!idOrdineClasse) {
-                    await connection.rollback();
-                    return res.status(400).json({ error: 'ID ordine classe richiesto' });
-                }
-
-                // Verifica ordine classe esistente e valido
-                const [classeOrder] = await connection.query(`
-                    SELECT oc.* 
-                    FROM OrdineClasse oc
-                    JOIN Utente u ON oc.classe = u.classe
-                    WHERE oc.idOrdine = ? 
-                    AND u.idUtente = ?
-                    AND oc.data = ?
-                `, [idOrdineClasse, userId, today]);
-
-                if (!classeOrder.length) {
-                    await connection.rollback();
-                    return res.status(400).json({ error: 'Ordine classe non valido' });
-                }
-
-                idClasseOrder = idOrdineClasse;
-
-            } else {
-                // Caso prof/segreteria - ordine EXT
-                if (!nTurno || !giorno) {
-                    await connection.rollback();
-                    return res.status(400).json({ error: 'Turno e giorno richiesti' });
-                }
-
-                // Cerca/Crea ordine classe EXT
-                const [extOrder] = await connection.query(`
-                    SELECT idOrdine 
-                    FROM OrdineClasse 
-                    WHERE classe = 'EXT' 
-                    AND idResponsabile = ?
-                    AND nTurno = ?
-                    AND giorno = ?
-                    AND data = ?
-                `, [userId, nTurno, giorno, today]);
-
-                if (extOrder.length > 0) {
-                    idClasseOrder = extOrder[0].idOrdine;
-                } else {
-                    // Crea nuovo ordine EXT
-                    const [newOrder] = await connection.query(`
-                        INSERT INTO OrdineClasse 
-                        (idResponsabile, data, nTurno, giorno, oraRitiro, classe, confermato)
-                        VALUES (?, ?, ?, ?, '12:00:00', 'EXT', TRUE)
-                    `, [userId, today, nTurno, giorno]);
-                    
-                    idClasseOrder = newOrder.insertId;
-                }
-            }
-
-            // Crea ordine singolo
-            const [ordineSingolo] = await connection.query(`
-                INSERT INTO OrdineSingolo 
-                (data, nTurno, giorno, user, idOrdineClasse)
-                VALUES (?, ?, ?, ?, ?)
-            `, [today, nTurno || 0, giorno || 'EXT', userId, idClasseOrder]);
-
-            // Aggiungi prodotti
-            for (const prodotto of prodotti) {
-                // Verifica prodotto attivo
-                const [prod] = await connection.query(`
-                    SELECT idProdotto 
-                    FROM Prodotto 
-                    WHERE idProdotto = ? 
-                    AND attivo = TRUE
-                `, [prodotto.idProdotto]);
-
-                if (!prod.length) {
-                    await connection.rollback();
-                    return res.status(400).json({ error: `Prodotto ${prodotto.idProdotto} non disponibile` });
-                }
-
-                await connection.query(`
-                    INSERT INTO DettagliOrdineSingolo 
-                    (idOrdineSingolo, idProdotto, quantita)
-                    VALUES (?, ?, ?)
-                `, [ordineSingolo.insertId, prodotto.idProdotto, prodotto.quantita]);
-            }
-
-            await connection.commit();
-            res.status(201).json({ 
-                idOrdine: ordineSingolo.insertId,
-                tipo: userRole === 'studente' ? 'classe' : 'ext'
-            });
-
-        } catch (error) {
-            await connection.rollback();
-            console.error('Error:', error);
-            res.status(500).json({ error: 'Database error' });
-        } finally {
-            connection.release();
-        }
-    }
-);
-
-router.get('/utente/:idUtente', 
-    authenticateJWT, 
-    authorizeRole(['admin', 'paninaro', 'studente', 'prof', 'segreteria']), 
+// Route per ottenere tutti gli ordini singoli
+router.get('/',
+    authenticateJWT,
+    authorizeRole(['admin']),
     async (req, res) => {
         const connection = await pool.getConnection();
         try {
-            const { idUtente } = req.params;
+            const { startDate, endDate, nTurno, user} = req.query;
 
-            // Ottieni tutti gli ordini singoli dell'utente
-            const [ordini] = await connection.execute(`
-                SELECT 
+            let query = `
+                SELECT
                     os.idOrdine,
                     os.data,
                     os.nTurno,
                     os.giorno,
+                    os.user,
                     oc.classe,
-                    oc.oraRitiro,
-                    GROUP_CONCAT(DISTINCT p.nome) AS prodotti
+                    oc.confermato,
+                    oc.preparato,
+                    (
+                        SELECT JSON_ARRAYAGG(
+                            JSON_OBJECT(
+                                'idProdotto', p.idProdotto,
+                                'nome', p.nome,
+                                'quantita', SUM(dos.quantita),
+                                'prezzo', p.prezzo
+                            )
+                        )
+                        FROM DettagliOrdineSingolo dos
+                        JOIN Prodotto p ON dos.idProdotto = p.idProdotto
+                        WHERE dos.idOrdineSingolo = os.idOrdine
+                        GROUP BY p.idProdotto
+                    ) AS prodotti
                 FROM OrdineSingolo os
                 LEFT JOIN OrdineClasse oc ON os.idOrdineClasse = oc.idOrdine
-                JOIN DettagliOrdineSingolo dos ON os.idOrdine = dos.idOrdineSingolo
-                JOIN Prodotto p ON dos.idProdotto = p.idProdotto
-                WHERE os.user = ?
-                GROUP BY os.idOrdine
-                ORDER BY os.data DESC
-            `, [idUtente]);
+                WHERE 1=1
+            `;
 
-            if (ordini.length === 0) {
-                return res.status(404).json({ error: 'Nessun ordine trovato per questo utente' });
+            const params = [];
+
+            if(startDate && endDate) {
+                query += ` AND os.data BETWEEN ? AND ?`;
+                params.push(startDate, endDate);
+            } else if(!startDate && !endDate) {
+                query += ` AND os.data = CURDATE()`;
             }
 
-            // Ottieni i dettagli completi per ogni ordine
-            const ordiniConDettagli = await Promise.all(ordini.map(async (ordine) => {
-                const [dettagli] = await connection.execute(`
-                    SELECT 
-                        dos.idProdotto,
-                        p.nome AS prodotto,
-                        p.prezzo,
-                        SUM(dos.quantita) AS quantita,
-                        GROUP_CONCAT(DISTINCT t.nome) AS tags
-                    FROM DettagliOrdineSingolo dos
-                    JOIN Prodotto p ON dos.idProdotto = p.idProdotto
-                    LEFT JOIN ProdottoTag pt ON p.idProdotto = pt.idProdotto
-                    LEFT JOIN Tag t ON pt.tag = t.nome
-                    WHERE dos.idOrdineSingolo = ?
-                    GROUP BY dos.idProdotto, p.nome, p.prezzo
-                `, [ordine.idOrdine]);
+            if(nTurno) {
+                query += ` AND os.nTurno = ?`;
+                params.push(nTurno);
+            }
 
-                return {
-                    ...ordine,
-                    prodotti: dettagli.map(d => ({
-                        ...d,
-                        tags: d.tags ? d.tags.split(',') : []
-                    }))
-                };
+            if(user) {
+                query += ` AND os.user = ?`;
+                params.push(user);
+            }
+
+            query += ` GROUP BY os.idOrdine ORDER BY os.data DESC, os.idOrdine DESC`;
+
+            const [orders] = await connection.execute(query, params);
+
+            const result = orders.map(order => ({
+                ...order,
+                prodotti: order.prodotti ? 
+                    (typeof order.prodotti === 'string' ? JSON.parse(order.prodotti) : order.prodotti) 
+                    : []
             }));
 
-            res.json(ordiniConDettagli);
+            res.json(result);
 
         } catch (error) {
-            console.error('Error:', error);
-            res.status(500).json({ error: 'Database error' });
+            console.error('Errore nel recupero ordini:', error);
+            res.status(500).json({ error: 'Errore del database' });
         } finally {
             connection.release();
         }
     }
 );
 
-// Check paninaro appartiene a una classe
-router.get('/classe/:classe', 
-    authenticateJWT, 
-    authorizeRole(['gestore', 'admin', 'paninaro']), 
+// Route per ottenere tutti gli ordini raggruppati per classe
+router.get('/classi',
+    authenticateJWT,
+    authorizeRole(['admin', 'gestore']),
+    async (req, res) => {
+        const connection = await pool.getConnection();
+        try {
+            const { startDate, endDate, nTurno } = req.query;
+            const userRole = req.user.ruolo;
+            let classeFilter = '';
+
+            // Se paninaro, filtra solo per la sua classe
+            if(userRole === 'paninaro') {
+                const [classe] = await connection.query(
+                    'SELECT classe FROM Utente WHERE idUtente = ?',
+                    [req.user.id]
+                );
+                if(!classe[0]?.classe) return res.status(403).json({ error: 'Nessuna classe assegnata' });
+                classeFilter = `AND oc.classe = ${classe[0].classe}`;
+            }
+
+            let query = `
+                SELECT
+                    oc.classe,
+                    JSON_ARRAYAGG(
+                        JSON_OBJECT(
+                            'idOrdineClasse', oc.idOrdine,
+                            'data', oc.data,
+                            'nTurno', oc.nTurno,
+                            'giorno', oc.giorno,
+                            'confermato', oc.confermato,
+                            'preparato', oc.preparato,
+                            'ordiniSingoli', (
+                                SELECT JSON_ARRAYAGG(
+                                    JSON_OBJECT(
+                                        'idOrdine', os.idOrdine,
+                                        'user', os.user,
+                                        'prodotti', (
+                                            SELECT JSON_ARRAYAGG(
+                                                JSON_OBJECT(
+                                                    'idProdotto', p.idProdotto,
+                                                    'nome', p.nome,
+                                                    'quantita', SUM(dos.quantita),
+                                                    'prezzo', p.prezzo
+                                                )
+                                            )
+                                            FROM DettagliOrdineSingolo dos
+                                            JOIN Prodotto p ON dos.idProdotto = p.idProdotto
+                                            WHERE dos.idOrdineSingolo = os.idOrdine
+                                            GROUP BY p.idProdotto
+                                        )
+                                    )
+                                )
+                                FROM OrdineSingolo os
+                                WHERE os.idOrdineClasse = oc.idOrdine
+                            )
+                        )
+                    ) AS dettagli
+                FROM OrdineClasse oc
+                WHERE 1=1
+                ${classeFilter}
+            `;
+
+            const params = [];
+
+            if(startDate && endDate) {
+                query += ` AND oc.data BETWEEN ? AND ?`;
+                params.push(startDate, endDate);
+            } else if(!startDate && !endDate) {
+                query += ` AND oc.data = CURDATE()`;
+            }
+
+            if(nTurno) {
+                query += ` AND oc.nTurno = ?`;
+                params.push(nTurno);
+            }
+
+            query += ` GROUP BY oc.classe ORDER BY oc.classe ASC`;
+
+            const [results] = await connection.execute(query, params);
+
+            // Formatta i risultati
+            const formatted = results.map(row => ({
+                classe: row.classe,
+                ordini: row.dettagli ? JSON.parse(row.dettagli).map(o => ({
+                    ...o,
+                    ordiniSingoli: o.ordiniSingoli ? JSON.parse(o.ordiniSingoli) : []
+                })) : []
+            }));
+
+            res.json(formatted);
+
+        } catch (error) {
+            console.error('Errore nel recupero ordini per classi:', error);
+            res.status(500).json({ error: 'Errore del database' });
+        } finally {
+            connection.release();
+        }
+    }
+);
+
+// Route per ottenere i propri ordini
+router.get('/me',
+    authenticateJWT,
+    authorizeRole(['admin', 'paninaro', 'studente', 'prof', 'segreteria']),
+    async (req, res) => {
+        const connection = await pool.getConnection();
+        try {
+            const userId = req.user.id;
+            let { startDate, endDate, nTurno } = req.query;
+
+            if (startDate) startDate = startDate.replace(/\//g, '-');
+            if (endDate) endDate = endDate.replace(/\//g, '-');
+
+            let query = `
+                SELECT
+                    os.idOrdine, os.data, os.nTurno, os.giorno,
+                    oc.classe, oc.confermato, oc.preparato,
+                    (
+                        SELECT JSON_ARRAYAGG(
+                            JSON_OBJECT(
+                                'idProdotto', t.idProdotto,
+                                'nome', t.nome,
+                                'quantita', t.quantita,
+                                'prezzo', t.prezzo
+                            )
+                        )
+                        FROM (
+                            SELECT 
+                                p.idProdotto, 
+                                p.nome, 
+                                SUM(dos.quantita) AS quantita, 
+                                p.prezzo
+                            FROM DettagliOrdineSingolo dos
+                            JOIN Prodotto p ON dos.idProdotto = p.idProdotto
+                            WHERE dos.idOrdineSingolo = os.idOrdine
+                            GROUP BY p.idProdotto
+                        ) AS t
+                    ) AS prodotti
+                FROM OrdineSingolo os
+                LEFT JOIN OrdineClasse oc ON os.idOrdineClasse = oc.idOrdine
+                WHERE os.user = ?
+            `;
+
+            const params = [userId];
+
+            if (startDate && endDate) {
+                query += ` AND os.data BETWEEN ? AND ?`;
+                params.push(startDate, endDate);
+            } else if (!startDate && !endDate) {
+                query += ` AND os.data = CURDATE()`;
+            }
+
+            if (nTurno) {
+                query += ` AND os.nTurno = ?`;
+                params.push(nTurno);
+            }
+
+            query += ` GROUP BY os.idOrdine ORDER BY os.data DESC, os.idOrdine DESC`;
+
+            const [orders] = await connection.execute(query, params);
+
+            const result = orders.map(order => ({
+                ...order,
+                prodotti: order.prodotti ? 
+                    (typeof order.prodotti === 'string' ? JSON.parse(order.prodotti) : order.prodotti) 
+                    : []
+            }));
+
+            res.json(result);
+
+        } catch (error) {
+            console.error(`Errore nel recuperare i propri ordini per utente ${req.user.id}:`, error);
+            res.status(500).json({ error: 'Errore del database nel recuperare i propri ordini.' });
+        } finally {
+            if (connection) connection.release();
+        }
+    }
+);
+
+// Route per creare un nuovo ordine
+router.post('/',
+    authenticateJWT,
+    authorizeRole(['studente', 'prof', 'segreteria', 'terminale', 'admin']),
+    async (req, res) => {
+        const connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        try {
+            const userId = req.user.id;
+            const userRole = req.user.ruolo;
+            const { prodotti, nTurno: bodyTurno } = req.body;
+            const today = new Date().toISOString().split('T')[0];
+
+            const giorniEnum = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
+            const giorno = giorniEnum[new Date().getDay()];
+            const giorniValidi = ['lun', 'mar', 'mer', 'gio', 'ven'];
+
+            if (!giorniValidi.includes(giorno)) {
+                await connection.rollback();
+                return res.status(400).json({ error: 'Ordini consentiti solo nei giorni feriali' });
+            }
+
+            let nTurno;
+            if (userRole === 'studente') {
+                nTurno = parseInt(bodyTurno, 10);
+                if (![1, 2].includes(nTurno)) {
+                    await connection.rollback();
+                    return res.status(400).json({ error: 'Turno non valido per studenti' });
+                }
+
+                const [turno] = await connection.query(`
+                    SELECT oraInizioOrdine, oraFineOrdine FROM Turno 
+                    WHERE n = ? AND giorno = ?
+                `, [nTurno, giorno]);
+
+                if (turno.length === 0) {
+                    await connection.rollback();
+                    return res.status(400).json({ error: 'Turno non disponibile' });
+                }
+
+                const oraCorrente = new Date().toLocaleTimeString('it-IT', { 
+                    hour12: false, 
+                    timeZone: 'Europe/Rome' 
+                }).slice(0, 5);
+
+                const { oraInizioOrdine, oraFineOrdine } = turno[0];
+                if (oraCorrente < oraInizioOrdine || oraCorrente > oraFineOrdine) {
+                    await connection.rollback();
+                    return res.status(400).json({ 
+                        error: `Fuori orario per il turno ${nTurno}: ${oraInizioOrdine}-${oraFineOrdine}`
+                    });
+                }
+            } else {
+                nTurno = 0;
+                const [turno] = await connection.query(`
+                    SELECT * FROM Turno WHERE n = ? AND giorno = ?
+                `, [nTurno, giorno]);
+
+                if (turno.length === 0) {
+                    await connection.rollback();
+                    return res.status(400).json({ error: 'Configurazione turno non trovata' });
+                }
+            }
+
+            if (!prodotti || !Array.isArray(prodotti) || prodotti.length === 0) {
+                await connection.rollback();
+                return res.status(400).json({ error: 'Lista prodotti vuota' });
+            }
+
+            const productIds = prodotti.map(p => p.idProdotto);
+            const placeholders = productIds.map(() => '?').join(',');
+            const [dbProducts] = await connection.query(`
+                SELECT idProdotto, prezzo, nome FROM Prodotto
+                WHERE idProdotto IN (${placeholders}) AND attivo = TRUE
+            `, [...productIds]);
+
+            const availableProductMap = new Map(dbProducts.map(p => [p.idProdotto, p]));
+            for (const item of prodotti) {
+                if (!availableProductMap.has(item.idProdotto)) {
+                    await connection.rollback();
+                    return res.status(400).json({ error: `Prodotto ${item.idProdotto} non disponibile` });
+                }
+                if (!Number.isInteger(item.quantita) || item.quantita <= 0) {
+                    await connection.rollback();
+                    return res.status(400).json({ error: `Quantità non valida per prodotto ${item.idProdotto}` });
+                }
+            }
+
+            let idOrdineClasse;
+            let idOrdineSingolo;
+
+            if (userRole === 'studente') {
+                const [userClass] = await connection.query(`
+                    SELECT classe FROM Utente WHERE idUtente = ?
+                `, [userId]);
+
+                if (!userClass[0]?.classe) {
+                    await connection.rollback();
+                    return res.status(400).json({ error: 'Classe non assegnata' });
+                }
+                
+                const [ordineSingoloResult] = await connection.query(`
+                    INSERT INTO OrdineSingolo (data, nTurno, giorno, user)
+                    VALUES (?, ?, ?, ?)
+                `, [today, nTurno, giorno, userId]);
+                idOrdineSingolo = ordineSingoloResult.insertId;
+
+            } else {
+                const classeExt = userId;
+                const [newOrderClasseResult] = await connection.query(`
+                    INSERT INTO OrdineClasse (idResponsabile, data, nTurno, giorno, classe, confermato, preparato)
+                    VALUES (?, ?, ?, ?, ?, TRUE, FALSE)
+                `, [userId, today, nTurno, giorno, classeExt]);
+                idOrdineClasse = newOrderClasseResult.insertId;
+
+                const [ordineSingoloResult] = await connection.query(`
+                    INSERT INTO OrdineSingolo (data, nTurno, giorno, user, idOrdineClasse)
+                    VALUES (?, ?, ?, ?, ?)
+                `, [today, nTurno, giorno, userId, idOrdineClasse]);
+                idOrdineSingolo = ordineSingoloResult.insertId;
+            }
+
+            const dettagliValues = prodotti.map(item => [idOrdineSingolo, item.idProdotto, item.quantita]);
+            await connection.query(`
+                INSERT INTO DettagliOrdineSingolo (idOrdineSingolo, idProdotto, quantita)
+                VALUES ?
+            `, [dettagliValues]);
+
+            await connection.commit();
+            res.status(201).json({
+                success: true,
+                idOrdineSingolo: idOrdineSingolo,
+                idOrdineClasse: idOrdineClasse
+            });
+
+        } catch (error) {
+            await connection.rollback();
+            console.error('Errore creazione ordine:', error);
+            res.status(500).json({ error: error.code === 'ER_DUP_ENTRY' ? 
+                'Ordine duplicato' : 'Errore database' });
+        } finally {
+            if (connection) connection.release();
+        }
+    }
+);
+
+// Route per ottenere ordini di classe raggruppati per una specifica classe
+router.get('/classi/:classe',
+    authenticateJWT,
+    authorizeRole(['admin', 'gestore']),
     async (req, res) => {
         const connection = await pool.getConnection();
         try {
             const { classe } = req.params;
+            const { startDate, endDate, nTurno } = req.query;
 
-            const [rows] = await connection.execute(`
-                SELECT 
+            let query = `
+                SELECT
+                    oc.idOrdine AS idOrdineClasse,
+                    oc.data,
                     oc.nTurno,
-                    p.idProdotto,
-                    p.nome AS prodottoNome,
-                    p.prezzo,
-                    SUM(dos.quantita) AS quantitaTotale,
-                    GROUP_CONCAT(DISTINCT t.nome) AS tags
+                    oc.giorno,
+                    oc.confermato,
+                    oc.preparato,
+                    oc.oraRitiro,
+                    JSON_ARRAYAGG(
+                        JSON_OBJECT(
+                            'idOrdineSingolo', os.idOrdine,
+                            'user', os.user,
+                            'prodotti', (
+                                SELECT JSON_ARRAYAGG(
+                                    JSON_OBJECT(
+                                        'idProdotto', p.idProdotto,
+                                        'nome', p.nome,
+                                        'quantita', SUM(dos.quantita),
+                                        'prezzo', p.prezzo
+                                    )
+                                )
+                                FROM DettagliOrdineSingolo dos
+                                JOIN Prodotto p ON dos.idProdotto = p.idProdotto
+                                WHERE dos.idOrdineSingolo = os.idOrdine
+                                GROUP BY p.idProdotto, p.nome, p.prezzo
+                            )
+                        )
+                    ) AS ordiniSingoli
                 FROM OrdineClasse oc
                 JOIN OrdineSingolo os ON oc.idOrdine = os.idOrdineClasse
-                JOIN DettagliOrdineSingolo dos ON os.idOrdine = dos.idOrdineSingolo
-                JOIN Prodotto p ON dos.idProdotto = p.idProdotto
-                LEFT JOIN ProdottoTag pt ON p.idProdotto = pt.idProdotto
-                LEFT JOIN Tag t ON pt.tag = t.nome
                 WHERE oc.classe = ?
-                GROUP BY oc.nTurno, p.idProdotto
-                ORDER BY oc.nTurno
-            `, [classe]);
+            `;
 
-            if (rows.length === 0) {
-                return res.status(404).json({ error: 'Nessun ordine trovato per questa classe' });
+            const params = [classe];
+
+            if (startDate && endDate) {
+                query += ` AND oc.data BETWEEN ? AND ?`;
+                params.push(startDate, endDate);
+            } else {
+                query += ` AND oc.data = CURDATE()`;
             }
 
-            // Raggruppa per turno
-            const groupedOrders = rows.reduce((acc, row) => {
-                const turno = row.nTurno;
-                
-                if (!acc[turno]) {
-                    acc[turno] = {
-                        classe: classe,
-                        nTurno: turno,
-                        prodotti: []
-                    };
-                }
-                
-                acc[turno].prodotti.push({
-                    idProdotto: row.idProdotto,
-                    nome: row.prodottoNome,
-                    prezzo: row.prezzo,
-                    quantita: row.quantitaTotale,
-                    tags: row.tags ? row.tags.split(',') : []
-                });
+            if (nTurno) {
+                query += ` AND oc.nTurno = ?`;
+                params.push(nTurno);
+            }
 
-                return acc;
-            }, {});
+            query += ` 
+                GROUP BY 
+                    oc.idOrdine,
+                    oc.data,
+                    oc.nTurno,
+                    oc.giorno,
+                    oc.confermato,
+                    oc.preparato,
+                    oc.oraRitiro
+                ORDER BY oc.data DESC, oc.idOrdine DESC
+            `;
 
-            res.json(Object.values(groupedOrders));
-            
+            const [orders] = await connection.execute(query, params);
+
+            const result = orders.map(order => ({
+                ...order,
+                ordiniSingoli: order.ordiniSingoli ? JSON.parse(order.ordiniSingoli) : []
+            }));
+
+            res.json(result);
+
         } catch (error) {
-            console.error('Error:', error);
-            res.status(500).json({ error: 'Database error' });
+            console.error('Errore nel recuperare ordini per classe:', error);
+            res.status(500).json({ error: 'Errore del database nel recuperare ordini per classe.' });
+        } finally {
+            if (connection) connection.release();
+        }
+    }
+);
+
+// Route per ottenere la classe del paninaro
+router.get('/classe',
+    authenticateJWT,
+    authorizeRole(['paninaro']),
+    async (req, res) => {
+        const connection = await pool.getConnection();
+        try {
+            const [classe] = await connection.query(
+                'SELECT classe FROM Utente WHERE idUtente = ?',
+                [req.user.id]
+            );
+
+            if (!classe[0]?.classe) {
+                return res.status(404).json({ error: 'Nessuna classe assegnata' });
+            }
+
+            res.json({ 
+                classe: classe[0].classe,
+                idUtente: req.user.id 
+            });
+
+        } catch (error) {
+            console.error('Errore nel recupero classe:', error);
+            res.status(500).json({ error: 'Errore del database' });
         } finally {
             connection.release();
         }
     }
 );
 
-router.get('/:idOrdine', 
-    authenticateJWT, 
-    authorizeRole(['gestore', 'admin', 'paninaro']), 
+// Route per conferma ordini singoli e creazione ordine di classe
+router.put('/classe/conferma',
+    authenticateJWT,
+    authorizeRole(['paninaro']),
     async (req, res) => {
-        const { idOrdine } = req.params;
         const connection = await pool.getConnection();
-        
+        await connection.beginTransaction();
+
         try {
-            // Cerca prima negli ordini singoli (studenti)
-            let [order] = await connection.execute(`
-                SELECT 
-                    os.*, 
-                    oc.classe,
-                    oc.oraRitiro,
-                    u.mail AS userEmail,
-                    u.ruolo AS userRole
+            const paninaroId = req.user.id;
+            const { nTurno } = req.body;
+            const today = new Date().toISOString().split('T')[0];
+            const giorniEnum = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
+            const giorno = giorniEnum[new Date().getDay()];
+
+            // 1. Verifica classe paninaro
+            const [classePaninaro] = await connection.query(
+                'SELECT classe FROM Utente WHERE idUtente = ?',
+                [paninaroId]
+            );
+
+            if (!classePaninaro[0]?.classe) {
+                await connection.rollback();
+                return res.status(403).json({ error: 'Paninaro non assegnato a nessuna classe' });
+            }
+
+            // 2. Trova ordini singoli non confermati della classe
+            const [ordiniDaConfermare] = await connection.query(`
+                SELECT os.idOrdine 
                 FROM OrdineSingolo os
-                LEFT JOIN OrdineClasse oc ON os.idOrdineClasse = oc.idOrdine
                 JOIN Utente u ON os.user = u.idUtente
-                WHERE os.idOrdine = ?
-            `, [idOrdine]);
+                WHERE 
+                    u.classe = ? 
+                    AND os.data = ? 
+                    AND os.nTurno = ? 
+                    AND os.idOrdineClasse IS NULL`,
+                [classePaninaro[0].classe, today, nTurno]
+            );
 
-            if (order.length > 0) {
-                // Caso ordine studente
-                const [details] = await connection.execute(`
-                    SELECT 
-                        dos.*, 
-                        p.nome AS prodottoNome,
-                        p.prezzo,
-                        GROUP_CONCAT(DISTINCT t.nome) AS tags
-                    FROM DettagliOrdineSingolo dos
-                    JOIN Prodotto p ON dos.idProdotto = p.idProdotto
-                    LEFT JOIN ProdottoTag pt ON p.idProdotto = pt.idProdotto
-                    LEFT JOIN Tag t ON pt.tag = t.nome
-                    WHERE dos.idOrdineSingolo = ?
-                    GROUP BY dos.id
-                `, [idOrdine]);
-
-                return res.json({
-                    ...order[0],
-                    tipo: 'singolo',
-                    dettagli: details.map(d => ({
-                        ...d,
-                        tags: d.tags ? d.tags.split(',') : []
-                    }))
-                });
+            if (ordiniDaConfermare.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({ error: 'Nessun ordine da confermare per questo turno' });
             }
 
-            // Cerca negli ordini classe (professori/segreteria)
-            [order] = await connection.execute(`
-                SELECT 
-                    oc.*,
-                    u.mail AS responsabileEmail
-                FROM OrdineClasse oc
-                JOIN Utente u ON oc.idResponsabile = u.idUtente
-                WHERE oc.idOrdine = ? 
-                AND oc.classe = 'EXT'
-            `, [idOrdine]);
+            // 3. Crea nuovo ordine di classe
+            const [nuovoOrdineClasse] = await connection.query(`
+                INSERT INTO OrdineClasse 
+                    (classe, data, nTurno, giorno, idResponsabile, confermato, preparato)
+                VALUES (?, ?, ?, ?, ?, TRUE, FALSE)`,
+                [classePaninaro[0].classe, today, nTurno, giorno, paninaroId]
+            );
 
-            if (order.length > 0) {
-                // Caso ordine prof/segreteria
-                const [prodotti] = await connection.execute(`
-                    SELECT 
-                        p.idProdotto,
-                        p.nome,
-                        p.prezzo,
-                        SUM(dos.quantita) AS quantita,
-                        GROUP_CONCAT(DISTINCT t.nome) AS tags
-                    FROM OrdineSingolo os
-                    JOIN DettagliOrdineSingolo dos ON os.idOrdine = dos.idOrdineSingolo
-                    JOIN Prodotto p ON dos.idProdotto = p.idProdotto
-                    LEFT JOIN ProdottoTag pt ON p.idProdotto = pt.idProdotto
-                    LEFT JOIN Tag t ON pt.tag = t.nome
-                    WHERE os.idOrdineClasse = ?
-                    GROUP BY p.idProdotto
-                `, [idOrdine]);
+            // 4. Collega gli ordini singoli al nuovo ordine di classe
+            await connection.query(`
+                UPDATE OrdineSingolo 
+                SET idOrdineClasse = ? 
+                WHERE idOrdine IN (?)`,
+                [nuovoOrdineClasse.insertId, ordiniDaConfermare.map(o => o.idOrdine)]
+            );
 
-                return res.json({
-                    ...order[0],
-                    tipo: 'classe',
-                    prodotti: prodotti.map(p => ({
-                        ...p,
-                        tags: p.tags ? p.tags.split(',') : []
-                    }))
-                });
-            }
-
-            res.status(404).json({ error: 'Ordine non trovato' });
+            await connection.commit();
+            res.json({ 
+                success: true,
+                idOrdineClasse: nuovoOrdineClasse.insertId,
+                classe: classePaninaro[0].classe,
+                nOrdiniCollegati: ordiniDaConfermare.length,
+                nTurno: nTurno,
+                data: today
+            });
 
         } catch (error) {
-            console.error('Error:', error);
-            res.status(500).json({ error: 'Database error' });
+            await connection.rollback();
+            console.error('Errore conferma ordine:', error);
+            res.status(500).json({ error: 'Errore del database' });
         } finally {
             connection.release();
         }

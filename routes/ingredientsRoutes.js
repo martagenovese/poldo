@@ -4,10 +4,10 @@ const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
 
-router.get('/ingredienti', authenticateJWT, authorizeRole('gestore', 'admin'), async (req, res) => {
+router.get('/', authenticateJWT, async (req, res) => {
     const connection = await pool.getConnection();
     try {
-        const [rows] = await connection.query('SELECT * FROM ingredienti');
+        const [rows] = await connection.query('SELECT * FROM Ingrediente ORDER BY nome ASC');
         res.json(rows);
     }
     catch (error) {
@@ -19,7 +19,7 @@ router.get('/ingredienti', authenticateJWT, authorizeRole('gestore', 'admin'), a
 });
 
 
-router.post('/ingredienti', authenticateJWT, authorizeRole('gestore', 'admin'), async (req, res) => {
+router.post('/', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
     const { nome } = req.body;
 
     // Validazione dell'input
@@ -27,19 +27,16 @@ router.post('/ingredienti', authenticateJWT, authorizeRole('gestore', 'admin'), 
         return res.status(400).json({ error: "Il campo 'nome' deve essere una stringa non vuota" });
     }
 
-    nome = nome.trim().toLowerCase();
+    const nomeFromatted = nome.trim().toLowerCase();
 
     const connection = await pool.getConnection();
     try {
         const [result] = await connection.query(
-            'INSERT INTO ingredienti (nome) VALUES (?)',
-            [nome]
+            'INSERT INTO Ingrediente (nome) VALUES (?)',
+            [nomeFromatted]
         );
         
-        res.status(201).json({ 
-            id: result.insertId, 
-            nome: nome 
-        });
+        res.status(201).json({nome: nomeFromatted});
 
     } catch (error) {
         console.error('Error creating ingredient:', error);
@@ -47,7 +44,7 @@ router.post('/ingredienti', authenticateJWT, authorizeRole('gestore', 'admin'), 
         if (error.code === 'ER_DUP_ENTRY') {
             res.status(409).json({ 
                 error: 'Ingrediente già presente nel database',
-                details: `L'ingrediente "${nome}" esiste già`
+                details: `L'ingrediente "${nomeFromatted}" esiste già`
             });
         } else {
             res.status(500).json({ 
@@ -59,3 +56,35 @@ router.post('/ingredienti', authenticateJWT, authorizeRole('gestore', 'admin'), 
         connection.release();
     }
 });
+
+
+router.delete('/:nome', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
+    const { nome } = req.params;
+
+    // Validazione dell'input
+    if (typeof nome !== 'string' || nome.trim() === '') {
+        return res.status(400).json({ error: 'ID non valido' });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        const [result] = await connection.query(
+            'DELETE FROM Ingrediente WHERE nome = ?',
+            [id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Ingrediente non trovato' });
+        }
+
+        res.status(204).send();
+    } catch (error) {
+        console.error('Error deleting ingredient:', error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    } finally {
+        connection.release();
+    }
+})
+
+
+module.exports = router;

@@ -3,10 +3,10 @@ require('dotenv').config({ path: 'secrets.env' });
 const express = require('express');
 const logger = require('./utils/logger');
 const authRoutes = require('./routes/authRoutes');
-const adminRoutes = require('./routes/adminRoutes');
 const productRoutes = require('./routes/productRoutes');
 const orderRoutes = require('./routes/orderRoutes');
-const reportRoutes = require('./routes/reportRoutes');
+const ingredientsRoutes = require('./routes/ingredientsRoutes');
+//const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
 const PORT = process.env.PORT;
@@ -23,6 +23,8 @@ app.use("/v1/auth", authRoutes);
 //app.use(adminRoutes);
 app.use("/v1/prodotti", productRoutes);
 app.use('/v1/ordini', orderRoutes);
+app.use('/v1/ingredienti', ingredientsRoutes);
+
 //app.use(reportRoutes);
 
 // Error handling
