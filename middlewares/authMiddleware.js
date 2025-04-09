@@ -23,8 +23,9 @@ module.exports = {
         if (!req.user) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
-        
-        if (roles.includes(req.user.ruolo)) {
+        console.log("user: " + req.user.ruolo);
+        console.log("ruoli ammessi: " + JSON.stringify(roles));
+        if (roles.includes(req.user.ruolo) || (roles.includes('studente') && req.user.ruolo === 'paninaro')) {
             next();
         } else {
             res.status(403).json({ error: 'Forbidden' });
