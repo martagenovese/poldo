@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const { DB } = require('../config/config');
 
 module.exports = {
     authenticateJWT: (req, res, next) => {

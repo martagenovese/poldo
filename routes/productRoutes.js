@@ -4,18 +4,78 @@ const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
 
-//TODO: filtro per tag && ingredienti && filtri vari
-
 router.get('/', async (req, res) => {
     const connection = await pool.getConnection();
     try {
-        const [rows] = await connection.execute(`
-            SELECT p.idProdotto, p.nome, p.prezzo, p.descrizione, p.disponibilita, GROUP_CONCAT(pt.tag) as tags 
+        const { ingredienti, tags, idGestione, prezzoMin, prezzoMax, orderBy, orderDirection } = req.query;
+
+        const tagList = tags ? tags.split(',') : [];
+        const ingredientiList = ingredienti ? ingredienti.split(',') : [];
+
+        let sql = `
+            SELECT 
+                p.idProdotto, 
+                p.nome, 
+                p.prezzo, 
+                p.descrizione, 
+                p.disponibilita, 
+                GROUP_CONCAT(DISTINCT pt.tag) as tags 
             FROM Prodotto p
             LEFT JOIN ProdottoTag pt ON p.idProdotto = pt.idProdotto
             WHERE p.attivo = true
-            GROUP BY p.idProdotto, p.nome, p.prezzo, p.descrizione, p.disponibilita
-        `);
+        `;
+
+        const params = [];
+        const whereConditions = [];
+        // const havingConditions = [];
+
+        if (idGestione) {
+            whereConditions.push('p.proprietario = ?');
+            params.push(idGestione);
+        }
+
+        if (prezzoMin || prezzoMax) {
+            const min = prezzoMin ? parseFloat(prezzoMin) : 0;
+            const max = prezzoMax ? parseFloat(prezzoMax) : Number.MAX_SAFE_INTEGER;
+            whereConditions.push('p.prezzo BETWEEN ? AND ?');
+            params.push(min, max);
+        }
+
+        if (tagList.length > 0) {
+            whereConditions.push(`pt.tag IN (${tagList.map(() => '?').join(',')})`);
+            params.push(...tagList);
+            //havingConditions.push('COUNT(DISTINCT pt.tag) = ?');
+            //params.push(tagList.length);
+        }
+
+        if (ingredientiList.length > 0) {
+            whereConditions.push(`pi.ingrediente IN (${ingredientiList.map(() => '?').join(',')})`);
+            params.push(...ingredientiList);
+            //havingConditions.push('COUNT(DISTINCT pi.ingrediente) = ?');
+            //params.push(ingredientiList.length);
+        }
+
+        if (whereConditions.length > 0) {
+            sql += ' AND ' + whereConditions.join(' AND ');
+        }
+
+        sql += ' GROUP BY p.idProdotto, p.nome, p.prezzo, p.descrizione, p.disponibilita';
+
+        // if (havingConditions.length > 0) {
+        //     sql += ' HAVING ' + havingConditions.join(' AND ');
+        // }
+
+        const orderField = orderBy === 'prezzo' ? 'p.prezzo' : 'p.nome';
+        const direction = orderDirection?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+        sql += ` ORDER BY ${orderField} ${direction}`;
+
+        console.log(sql);
+
+        const [rows] = await connection.execute(sql, params);
+
+        if(rows.length === 0) {
+            return res.status(404).json({ error: 'Nessun prodotto trovato' });
+        }
 
         res.json(rows.map(row => ({
             ...row,
@@ -25,7 +85,6 @@ router.get('/', async (req, res) => {
         connection.release();
     }
 });
-
 
 router.get('/:id', async (req, res) => {
     const connection = await pool.getConnection();
@@ -57,8 +116,18 @@ router.get('/:id', async (req, res) => {
 router.post('/', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
     const { nome, prezzo, descrizione, tags, ingredienti, quantita} = req.body;
     if (!nome || !prezzo || !quantita || quantita < 0 || !descrizione || tags.length <= 0 || ingredienti.length <= 0) {
-        return res.status(400).json({ error: 'inserire nome, descrizione, prezzo, quantita, tag e ingredienti' });
+        return res.status(400).json({ error: 'Inserire nome, descrizione, prezzo, quantita, tag e ingredienti' });
     }
+
+
+    if(req.user.ruolo === 'admin'){
+        const {idGestione} = req.body;
+        if(!idGestione){
+            return res.status(400).json({ error: 'Inserire idGestione' });
+        }
+        req.user.idGestione = idGestione;
+    }
+
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
@@ -92,7 +161,14 @@ router.post('/', authenticateJWT, authorizeRole(['gestore', 'admin']), async (re
         res.status(201).json({ id: productId });
     } catch (error) {
         await connection.rollback();
-        console.error(error);
+        console.error("Errore inserimento prodotto: " + error);
+
+        if(error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ error: 'Prodotto già presente' });
+        }
+        if(error.code === 'ER_NO_REFERENCED_ROW_2') {
+            return res.status(404).json({ error: 'Gestione non trovata' });
+        }
         res.status(500).json({ error: 'Errore interno del server' });
     } finally {
         connection.release();
@@ -153,10 +229,17 @@ router.put('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async (
     }
 });
 
-
-
 router.patch('/:id/setStatus', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
     const { attivo } = req.body;
+
+    if(req.user.ruolo === 'admin'){
+        const {idGestione} = req.body;
+        if(!idGestione){
+            return res.status(400).json({ error: 'Inserire idGestione' });
+        }
+        req.user.idGestione = idGestione;
+    }
+
     const connection = await pool.getConnection();
     try {
         const [result] = await connection.execute(
@@ -168,8 +251,11 @@ router.patch('/:id/setStatus', authenticateJWT, authorizeRole(['gestore', 'admin
             return res.status(404).json({ error: 'Prodotto non trovato o non tuo' });
         }
 
-        res.status(200).json({ message: 'Prodotto aggiunto con successo' });
-    } finally {
+        res.status(200).json({ message: 'Prodotto modificato con successo' });
+    } catch (error) {
+        console.error("Errore aggiornamento stato prodotto: " + error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }finally {
         connection.release();
     }
 });
