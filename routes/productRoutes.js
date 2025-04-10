@@ -3,27 +3,36 @@ const router = express.Router();
 const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
+
+//TODO: da fixare la query per piu tag e piu ingredienti
+// ora va solo con 1 tag e 1 ingrediente
 async function getProducts(ingredienti, tags, proprietario, prezzoMin, prezzoMax, temporaneo, disponibilita, attivo, 
-    orderBy, orderDirection, all = false) {
+    orderBy, orderDirection, all = false, eliminato = false) {
+        console.log(all);
 
     const connection = await pool.getConnection();
     try {
-        const tagList = tags ? tags.split(',') : [];
-        const ingredientiList = ingredienti ? ingredienti.split(',') : [];
 
-        // Subquery con alias corretti
+        //per ora forza ad uno solo
+        const tagList = tags ? [tags.split(',')[0]] : [];
+        const ingredientiList = ingredienti ? [ingredienti.split(',')[0]] : [];
+
+        console.log("Tag list:", tagList);
+        console.log("Ingredienti list:", ingredientiList);
+
+        // Subquery
         let subQuery = `
             SELECT p1.idProdotto 
             FROM Prodotto p1
             LEFT JOIN ProdottoTag pt1 ON p1.idProdotto = pt1.idProdotto
             LEFT JOIN ProdottoIngrediente pi1 ON p1.idProdotto = pi1.idProdotto
-            WHERE 1=1
+            where 1=1
         `;
 
         const params = [];
         const havingConditions = [];
 
-        // Filtri WHERE
+        // WHERE
         if (proprietario) {
             subQuery += ' AND p1.proprietario = ?';
             params.push(proprietario);
@@ -51,33 +60,32 @@ async function getProducts(ingredienti, tags, proprietario, prezzoMin, prezzoMax
             params.push(attivo === 'true');
         }
 
-        // Filtri per tag
+        // Gestione TAG
         if (tagList.length > 0) {
             subQuery += ` AND pt1.tag IN (${tagList.map(() => '?').join(',')})`;
             params.push(...tagList);
-            havingConditions.push('COUNT(DISTINCT pt1.tag) = ?');
-            params.push(tagList.length);
+            havingConditions.push('COUNT(DISTINCT pt1.tag) > ?');
+            params.push(tagList.length); // Deve avere TUTTI i tag specificati
         }
 
-        // Filtri per ingredienti
+        // Gestione INGREDIENTI
         if (ingredientiList.length > 0) {
             subQuery += ` AND pi1.ingrediente IN (${ingredientiList.map(() => '?').join(',')})`;
             params.push(...ingredientiList);
-            havingConditions.push('COUNT(DISTINCT pi1.ingrediente) = ?');
-            params.push(ingredientiList.length);
+            havingConditions.push('COUNT(DISTINCT pi1.ingrediente) > ?');
+            params.push(ingredientiList.length); // Deve avere TUTTI gli ingredienti
         }
 
-        // Chiusura subquery
+        // Completa la subquery
         subQuery += ' GROUP BY p1.idProdotto';
         if (havingConditions.length > 0) {
             subQuery += ` HAVING ${havingConditions.join(' AND ')}`;
         }
 
-        // Query principale
-        const selectFields = all ? 
+        // Query
+        const selectFields = all === false ? 
             `p.idProdotto, p.nome, p.prezzo, p.descrizione, p.disponibilita` :
-            `p.idProdotto, p.nome, p.prezzo, p.descrizione, p.disponibilita,
-             p.temporaneo, p.attivo, p.proprietario`;
+            `p.idProdotto, p.nome, p.prezzo, p.descrizione, p.disponibilita, p.temporaneo, p.attivo, p.proprietario, p.eliminato, p.quantita`;
 
         let mainQuery = `
             SELECT 
@@ -88,8 +96,14 @@ async function getProducts(ingredienti, tags, proprietario, prezzoMin, prezzoMax
             LEFT JOIN ProdottoTag pt ON p.idProdotto = pt.idProdotto
             LEFT JOIN ProdottoIngrediente pi ON p.idProdotto = pi.idProdotto
             WHERE p.idProdotto IN (${subQuery})
-            GROUP BY p.idProdotto
         `;
+
+        if(eliminato === false){
+            mainQuery += ' AND p.eliminato = 0 ';
+        }
+
+        // Quert Group by
+        mainQuery += `GROUP BY p.idProdotto, ${selectFields}`;
 
         // Ordinamento
         const validOrderFields = ['nome', 'prezzo'];
@@ -97,7 +111,10 @@ async function getProducts(ingredienti, tags, proprietario, prezzoMin, prezzoMax
         const direction = orderDirection?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
         mainQuery += ` ORDER BY ${orderField} ${direction}`;
 
-        // Esecuzione query
+
+        console.log("Query:", mainQuery);
+        console.log("Params:", params);
+
         const [rows] = await connection.execute(mainQuery, params);
         
         return rows;
@@ -111,12 +128,14 @@ async function getProducts(ingredienti, tags, proprietario, prezzoMin, prezzoMax
 }
 
 
-router.get('/', async (req, res) => {
+router.get('/', authenticateJWT, async (req, res) => {
     const connection = await pool.getConnection();
     try {
-        const { tags, idGestione, prezzoMin, prezzoMax, orderBy, orderDirection } = req.query;
+        const { ingredienti, tags, idGestione, prezzoMin, prezzoMax, orderBy, orderDirection } = req.query;
 
-        const [rows] = await getProducts(null, tags, idGestione, prezzoMin, prezzoMax, null, null, null, orderBy, orderDirection);
+        //const [rows] = await getProducts(null, tags, idGestione, prezzoMin, prezzoMax, null, null, null, orderBy, orderDirection);
+        const rows = await getProducts(ingredienti, tags, undefined, prezzoMin, prezzoMax, undefined, undefined, undefined, orderBy, orderDirection, false, false);
+        
         if (rows.length === 0) {
             return res.status(404).json({ error: 'Nessun prodotto trovato' });
         }
@@ -152,7 +171,7 @@ router.get('/all', authenticateJWT, authorizeRole(['gestore', 'admin']), async (
             orderDirection
         } = req.query;
 
-        const rows = await getProducts(ingredienti, tags, proprietario, prezzoMin, prezzoMax, temporaneo, disponibilita, attivo, orderBy, orderDirection, true);
+        const rows = await getProducts(ingredienti, tags, proprietario, prezzoMin, prezzoMax, temporaneo, disponibilita, attivo, orderBy, orderDirection, true, true);
         if (rows.length === 0) {
             return res.status(404).json({ error: 'Nessun prodotto trovato' });
         }
@@ -301,7 +320,41 @@ router.post('/', authenticateJWT, authorizeRole(['gestore', 'admin']), async (re
 });
 
 
-//TODO: route 4 delete
+router.delete('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
+    const connection = await pool.getConnection();
+
+    if(req.user.ruolo === 'admin'){
+        const {idGestione} = req.body;
+        if(!idGestione){
+            return res.status(400).json({ error: 'Inserire idGestione' });
+        }
+        req.user.idGestione = idGestione;
+    }
+
+    try {
+        await connection.beginTransaction();
+
+        const [result] = await connection.execute(
+            'UPDATE Prodotto SET eliminato = 1 WHERE idProdotto = ? AND proprietario = ?',
+            [req.params.id, req.user.idGestione]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Prodotto non trovato o non tuo' });
+        }
+
+        await connection.commit();
+        res.status(200).json({ message: 'Prodotto eliminato con successo' });
+    }
+    catch (error) {
+        await connection.rollback();
+        console.error("Errore eliminazione prodotto:", error);
+        res.status(500).json({ error: 'Errore interno del server' });
+    }
+    finally {
+        connection.release();
+    }
+})
 
 
 router.put('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {

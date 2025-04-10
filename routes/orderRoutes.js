@@ -164,7 +164,6 @@ router.get('/classi',
 
             const [results] = await connection.execute(query, params);
 
-            // Formatta i risultati
             const formatted = results.map(row => ({
                 classe: row.classe,
                 ordini: row.dettagli ? JSON.parse(row.dettagli).map(o => ({
@@ -543,7 +542,7 @@ router.put('/classe/conferma',
             const giorniEnum = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
             const giorno = giorniEnum[new Date().getDay()];
 
-            // 1. Verifica classe paninaro
+            // Verifica classe paninaro
             const [classePaninaro] = await connection.query(
                 'SELECT classe FROM Utente WHERE idUtente = ?',
                 [paninaroId]
@@ -554,7 +553,7 @@ router.put('/classe/conferma',
                 return res.status(403).json({ error: 'Paninaro non assegnato a nessuna classe' });
             }
 
-            // 2. Trova ordini singoli non confermati della classe
+            // Trova ordini singoli non confermati
             const [ordiniDaConfermare] = await connection.query(`
                 SELECT os.idOrdine 
                 FROM OrdineSingolo os
@@ -572,7 +571,7 @@ router.put('/classe/conferma',
                 return res.status(404).json({ error: 'Nessun ordine da confermare per questo turno' });
             }
 
-            // 3. Crea nuovo ordine di classe
+            // Crea ordine di classe
             const [nuovoOrdineClasse] = await connection.query(`
                 INSERT INTO OrdineClasse 
                     (classe, data, nTurno, giorno, idResponsabile, confermato, preparato)
@@ -580,7 +579,7 @@ router.put('/classe/conferma',
                 [classePaninaro[0].classe, today, nTurno, giorno, paninaroId]
             );
 
-            // 4. Collega gli ordini singoli al nuovo ordine di classe
+            // Collega gli ordini 
             await connection.query(`
                 UPDATE OrdineSingolo 
                 SET idOrdineClasse = ? 

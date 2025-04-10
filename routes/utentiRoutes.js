@@ -4,8 +4,7 @@ const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
 
-// gets
-
+// Gets
 router.get('/', authenticateJWT, authorizeRole('admin'), async (req, res) => {
     const connection = await pool.getConnection();
     try {
@@ -18,6 +17,7 @@ router.get('/', authenticateJWT, authorizeRole('admin'), async (req, res) => {
         connection.release();
     }
 });
+
 router.get('/:id', authenticateJWT, authorizeRole('admin'), async (req, res) => {
     const id = req.params.id;
     const connection = await pool.getConnection();
@@ -34,6 +34,7 @@ router.get('/:id', authenticateJWT, authorizeRole('admin'), async (req, res) => 
         connection.release();
     }
 });
+
 router.get('/io', authenticateJWT, async (req, res) => {
     const id = req.user.id;
     const connection = await pool.getConnection();
@@ -50,6 +51,7 @@ router.get('/io', authenticateJWT, async (req, res) => {
         connection.release();
     }
 });
+
 router.get('/paninari', authenticateJWT, authorizeRole('admin'), async (req, res) => {
     const connection = await pool.getConnection();
     try {
@@ -62,6 +64,7 @@ router.get('/paninari', authenticateJWT, authorizeRole('admin'), async (req, res
         connection.release();
     }
 });
+
 router.get('/banned', authenticateJWT, authorizeRole('admin'), async (req, res) => {
     const connection = await pool.getConnection();
     try {
