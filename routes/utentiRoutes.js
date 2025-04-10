@@ -3,7 +3,6 @@ const router = express.Router();
 const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
-
 // Gets
 router.get('/', authenticateJWT, authorizeRole('admin'), async (req, res) => {
     const connection = await pool.getConnection();
@@ -80,7 +79,6 @@ router.get('/banned', authenticateJWT, authorizeRole('admin'), async (req, res) 
 
 
 // patches
-
 router.patch('/:id/ban', authenticateJWT, authorizeRole('admin'), async (req, res) => {
     const id = req.params.id;
     const connection = await pool.getConnection();
@@ -97,6 +95,7 @@ router.patch('/:id/ban', authenticateJWT, authorizeRole('admin'), async (req, re
         connection.release();
     }
 });
+
 router.patch('/:id/unban', authenticateJWT, authorizeRole('admin'), async (req, res) => {
     const id = req.params.id;
     const connection = await pool.getConnection();
@@ -113,6 +112,7 @@ router.patch('/:id/unban', authenticateJWT, authorizeRole('admin'), async (req, 
         connection.release();
     }
 });
+
 router.patch('/:id/ruolo', authenticateJWT, authorizeRole('admin'), async (req, res) => {
     const id = req.params.id;
     const { ruolo } = req.body;

@@ -3,7 +3,6 @@ const router = express.Router();
 const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
-
 // Gets
 router.get('/', authenticateJWT, async (req, res) => {
     try {

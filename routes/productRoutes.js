@@ -3,7 +3,6 @@ const router = express.Router();
 const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
-
 function createQuery(filters) {
     let query = "SELECT p.* FROM Prodotto p";
     let conditions = [];
@@ -194,7 +193,6 @@ router.get('/', authenticateJWT, async (req, res) => {
 router.get('/all', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
     const connection = await pool.getConnection();
     try {
-   
         const { ingredienti, nonIngredienti, tag, nonTag, prezzoMin, prezzoMax, temporaneo, disponibilita, attivo, orderBy, orderDirection } = req.query;
 
         const proprietario = req.user.ruolo === 'gestore' ? req.user.idGestione : req.query.proprietario;
@@ -224,7 +222,6 @@ router.get('/all', authenticateJWT, authorizeRole(['gestore', 'admin']), async (
             return res.status(404).json({ error: 'Nessun prodotto trovato' });
         }
 
-
         res.json(rows.map(row => ({
             ...row,
             tags: row.tags ? [...new Set(row.tags.split(','))] : [],
@@ -238,7 +235,6 @@ router.get('/all', authenticateJWT, authorizeRole(['gestore', 'admin']), async (
         connection.release();
     }
 });
-
 
 router.get('/:id', authenticateJWT, async (req, res) => {
     const connection = await pool.getConnection();
@@ -283,7 +279,7 @@ router.get('/:id', authenticateJWT, async (req, res) => {
             WHERE pi.idProdotto = ?`, [req.params.id]);
         
         const row = rows[0];
-        
+
         res.json({
             ...row,
             tags: tags.length>0 ? tags.map(tag => tag.tag) : [],
@@ -387,7 +383,6 @@ router.post('/', authenticateJWT, authorizeRole(['gestore', 'admin']), async (re
     }
 });
 
-
 router.delete('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
     const connection = await pool.getConnection();
 
@@ -423,7 +418,6 @@ router.delete('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), asyn
         connection.release();
     }
 })
-
 
 router.put('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
     const { nome, prezzo, descrizione, tags, ingredienti } = req.body;

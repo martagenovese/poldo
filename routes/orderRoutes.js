@@ -3,15 +3,28 @@ const router = express.Router();
 const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
+// Helper function to parse JSON safely
+const parseJSON = (data) => {
+    try {
+        return JSON.parse(data);
+    } catch (error) {
+        return [];
+    }
+};
 
-// Route per ottenere tutti gli ordini singoli
+// Helper function to format date as yyyy-mm-dd
+const formatDate = (date) => {
+    return new Date(date).toISOString().slice(0, 10);
+};
+
+// Route to get all individual orders
 router.get('/',
     authenticateJWT,
     authorizeRole(['admin']),
     async (req, res) => {
         const connection = await pool.getConnection();
         try {
-            const { startDate, endDate, nTurno, user} = req.query;
+            const { startDate, endDate, nTurno, user, confermato, preparato } = req.query;
 
             let query = `
                 SELECT
@@ -23,53 +36,58 @@ router.get('/',
                     oc.classe,
                     oc.confermato,
                     oc.preparato,
-                    (
-                        SELECT JSON_ARRAYAGG(
-                            JSON_OBJECT(
-                                'idProdotto', p.idProdotto,
-                                'nome', p.nome,
-                                'quantita', SUM(dos.quantita),
-                                'prezzo', p.prezzo
-                            )
+                    JSON_ARRAYAGG(
+                        JSON_OBJECT(
+                            'idProdotto', p.idProdotto,
+                            'nome', p.nome,
+                            'quantita', dos.quantita,
+                            'prezzo', p.prezzo
                         )
-                        FROM DettagliOrdineSingolo dos
-                        JOIN Prodotto p ON dos.idProdotto = p.idProdotto
-                        WHERE dos.idOrdineSingolo = os.idOrdine
-                        GROUP BY p.idProdotto
                     ) AS prodotti
                 FROM OrdineSingolo os
                 LEFT JOIN OrdineClasse oc ON os.idOrdineClasse = oc.idOrdine
+                LEFT JOIN DettagliOrdineSingolo dos ON os.idOrdine = dos.idOrdineSingolo
+                LEFT JOIN Prodotto p ON dos.idProdotto = p.idProdotto
                 WHERE 1=1
             `;
 
             const params = [];
 
-            if(startDate && endDate) {
+            if (startDate && endDate) {
                 query += ` AND os.data BETWEEN ? AND ?`;
                 params.push(startDate, endDate);
-            } else if(!startDate && !endDate) {
+            } else if (!startDate && !endDate) {
                 query += ` AND os.data = CURDATE()`;
             }
 
-            if(nTurno) {
+            if (nTurno) {
                 query += ` AND os.nTurno = ?`;
                 params.push(nTurno);
             }
 
-            if(user) {
+            if (user) {
                 query += ` AND os.user = ?`;
                 params.push(user);
             }
 
+            if (confermato === '0' || confermato === '1') {
+                query += ` AND oc.confermato = ?`;
+                params.push(Number(confermato));
+            }
+
+            if (preparato === '0' || preparato === '1') {
+                query += ` AND oc.preparato = ?`;
+                params.push(Number(preparato));
+            }
+          
             query += ` GROUP BY os.idOrdine ORDER BY os.data DESC, os.idOrdine DESC`;
 
             const [orders] = await connection.execute(query, params);
 
             const result = orders.map(order => ({
                 ...order,
-                prodotti: order.prodotti ? 
-                    (typeof order.prodotti === 'string' ? JSON.parse(order.prodotti) : order.prodotti) 
-                    : []
+                data: formatDate(order.data),
+                prodotti: order.prodotti
             }));
 
             res.json(result);
@@ -83,93 +101,84 @@ router.get('/',
     }
 );
 
-// Route per ottenere tutti gli ordini raggruppati per classe
+// Route to get all orders grouped by class
 router.get('/classi',
     authenticateJWT,
     authorizeRole(['admin', 'gestore']),
     async (req, res) => {
         const connection = await pool.getConnection();
         try {
-            const { startDate, endDate, nTurno } = req.query;
+            const { startDate, endDate, nTurno, confermato, preparato } = req.query;
             const userRole = req.user.ruolo;
             let classeFilter = '';
 
-            // Se paninaro, filtra solo per la sua classe
-            if(userRole === 'paninaro') {
+            if (userRole === 'paninaro') {
                 const [classe] = await connection.query(
                     'SELECT classe FROM Utente WHERE idUtente = ?',
                     [req.user.id]
                 );
-                if(!classe[0]?.classe) return res.status(403).json({ error: 'Nessuna classe assegnata' });
+                if (!classe[0]?.classe) return res.status(403).json({ error: 'Nessuna classe assegnata' });
                 classeFilter = `AND oc.classe = ${classe[0].classe}`;
             }
 
             let query = `
                 SELECT
-                    oc.classe,
+                    c.nome AS classe,
+                    oc.data,
                     JSON_ARRAYAGG(
                         JSON_OBJECT(
-                            'idOrdineClasse', oc.idOrdine,
-                            'data', oc.data,
-                            'nTurno', oc.nTurno,
-                            'giorno', oc.giorno,
-                            'confermato', oc.confermato,
-                            'preparato', oc.preparato,
-                            'ordiniSingoli', (
-                                SELECT JSON_ARRAYAGG(
-                                    JSON_OBJECT(
-                                        'idOrdine', os.idOrdine,
-                                        'user', os.user,
-                                        'prodotti', (
-                                            SELECT JSON_ARRAYAGG(
-                                                JSON_OBJECT(
-                                                    'idProdotto', p.idProdotto,
-                                                    'nome', p.nome,
-                                                    'quantita', SUM(dos.quantita),
-                                                    'prezzo', p.prezzo
-                                                )
-                                            )
-                                            FROM DettagliOrdineSingolo dos
-                                            JOIN Prodotto p ON dos.idProdotto = p.idProdotto
-                                            WHERE dos.idOrdineSingolo = os.idOrdine
-                                            GROUP BY p.idProdotto
-                                        )
-                                    )
-                                )
-                                FROM OrdineSingolo os
-                                WHERE os.idOrdineClasse = oc.idOrdine
-                            )
+                            'idProdotto', p.idProdotto,
+                            'nome', p.nome,
+                            'quantita', dos.totalQuantita,
+                            'prezzo', p.prezzo
                         )
-                    ) AS dettagli
+                    ) AS prodotti
                 FROM OrdineClasse oc
+                JOIN Classe c ON oc.classe = c.id
+                JOIN (
+                    SELECT os.idOrdineClasse, dos.idProdotto, SUM(dos.quantita) AS totalQuantita
+                    FROM OrdineSingolo os
+                    JOIN DettagliOrdineSingolo dos ON os.idOrdine = dos.idOrdineSingolo
+                    GROUP BY os.idOrdineClasse, dos.idProdotto
+                ) dos ON oc.idOrdine = dos.idOrdineClasse
+                JOIN Prodotto p ON dos.idProdotto = p.idProdotto
                 WHERE 1=1
                 ${classeFilter}
             `;
 
             const params = [];
 
-            if(startDate && endDate) {
+            if (startDate && endDate) {
                 query += ` AND oc.data BETWEEN ? AND ?`;
                 params.push(startDate, endDate);
-            } else if(!startDate && !endDate) {
+            } else if (!startDate && !endDate) {
                 query += ` AND oc.data = CURDATE()`;
             }
 
-            if(nTurno) {
+            if (nTurno) {
                 query += ` AND oc.nTurno = ?`;
                 params.push(nTurno);
             }
 
-            query += ` GROUP BY oc.classe ORDER BY oc.classe ASC`;
+            if (confermato === '0' || confermato === '1') {
+                query += ` AND oc.confermato = ?`;
+                params.push(Number(confermato));
+            }
+
+            if (preparato === '0' || preparato === '1') {
+                query += ` AND oc.preparato = ?`;
+                params.push(Number(preparato));
+            }
+
+            query += ` GROUP BY c.nome, oc.data ORDER BY oc.classe ASC`;
 
             const [results] = await connection.execute(query, params);
 
+            // Format the results
             const formatted = results.map(row => ({
                 classe: row.classe,
-                ordini: row.dettagli ? JSON.parse(row.dettagli).map(o => ({
-                    ...o,
-                    ordiniSingoli: o.ordiniSingoli ? JSON.parse(o.ordiniSingoli) : []
-                })) : []
+                data: formatDate(row.data),
+                prodotti: row.prodotti
             }));
 
             res.json(formatted);
@@ -183,7 +192,7 @@ router.get('/classi',
     }
 );
 
-// Route per ottenere i propri ordini
+// Route to get user's own orders
 router.get('/me',
     authenticateJWT,
     authorizeRole(['admin', 'paninaro', 'studente', 'prof', 'segreteria']),
@@ -200,29 +209,18 @@ router.get('/me',
                 SELECT
                     os.idOrdine, os.data, os.nTurno, os.giorno,
                     oc.classe, oc.confermato, oc.preparato,
-                    (
-                        SELECT JSON_ARRAYAGG(
-                            JSON_OBJECT(
-                                'idProdotto', t.idProdotto,
-                                'nome', t.nome,
-                                'quantita', t.quantita,
-                                'prezzo', t.prezzo
-                            )
+                    JSON_ARRAYAGG(
+                        JSON_OBJECT(
+                            'idProdotto', p.idProdotto,
+                            'nome', p.nome,
+                            'quantita', dos.quantita,
+                            'prezzo', p.prezzo
                         )
-                        FROM (
-                            SELECT 
-                                p.idProdotto, 
-                                p.nome, 
-                                SUM(dos.quantita) AS quantita, 
-                                p.prezzo
-                            FROM DettagliOrdineSingolo dos
-                            JOIN Prodotto p ON dos.idProdotto = p.idProdotto
-                            WHERE dos.idOrdineSingolo = os.idOrdine
-                            GROUP BY p.idProdotto
-                        ) AS t
                     ) AS prodotti
                 FROM OrdineSingolo os
                 LEFT JOIN OrdineClasse oc ON os.idOrdineClasse = oc.idOrdine
+                LEFT JOIN DettagliOrdineSingolo dos ON os.idOrdine = dos.idOrdineSingolo
+                LEFT JOIN Prodotto p ON dos.idProdotto = p.idProdotto
                 WHERE os.user = ?
             `;
 
@@ -246,9 +244,7 @@ router.get('/me',
 
             const result = orders.map(order => ({
                 ...order,
-                prodotti: order.prodotti ? 
-                    (typeof order.prodotti === 'string' ? JSON.parse(order.prodotti) : order.prodotti) 
-                    : []
+                prodotti: order.prodotti
             }));
 
             res.json(result);
@@ -262,7 +258,7 @@ router.get('/me',
     }
 );
 
-// Route per creare un nuovo ordine
+// Route to create a new order
 router.post('/',
     authenticateJWT,
     authorizeRole(['studente', 'prof', 'segreteria', 'terminale', 'admin']),
@@ -409,7 +405,7 @@ router.post('/',
     }
 );
 
-// Route per ottenere ordini di classe raggruppati per una specifica classe
+// Route to get class orders grouped by a specific class name
 router.get('/classi/:classe',
     authenticateJWT,
     authorizeRole(['admin', 'gestore']),
@@ -437,20 +433,24 @@ router.get('/classi/:classe',
                                     JSON_OBJECT(
                                         'idProdotto', p.idProdotto,
                                         'nome', p.nome,
-                                        'quantita', SUM(dos.quantita),
+                                        'quantita', dos.totalQuantita,
                                         'prezzo', p.prezzo
                                     )
                                 )
-                                FROM DettagliOrdineSingolo dos
+                                FROM (
+                                    SELECT dos.idProdotto, SUM(dos.quantita) AS totalQuantita
+                                    FROM DettagliOrdineSingolo dos
+                                    WHERE dos.idOrdineSingolo = os.idOrdine
+                                    GROUP BY dos.idProdotto
+                                ) dos
                                 JOIN Prodotto p ON dos.idProdotto = p.idProdotto
-                                WHERE dos.idOrdineSingolo = os.idOrdine
-                                GROUP BY p.idProdotto, p.nome, p.prezzo
                             )
                         )
                     ) AS ordiniSingoli
                 FROM OrdineClasse oc
                 JOIN OrdineSingolo os ON oc.idOrdine = os.idOrdineClasse
-                WHERE oc.classe = ?
+                JOIN Classe c ON oc.classe = c.id
+                WHERE c.nome = ?
             `;
 
             const params = [classe];
@@ -458,7 +458,7 @@ router.get('/classi/:classe',
             if (startDate && endDate) {
                 query += ` AND oc.data BETWEEN ? AND ?`;
                 params.push(startDate, endDate);
-            } else {
+            } else if (!startDate && !endDate) {
                 query += ` AND oc.data = CURDATE()`;
             }
 
@@ -483,7 +483,7 @@ router.get('/classi/:classe',
 
             const result = orders.map(order => ({
                 ...order,
-                ordiniSingoli: order.ordiniSingoli ? JSON.parse(order.ordiniSingoli) : []
+                ordiniSingoli: parseJSON(order.ordiniSingoli)
             }));
 
             res.json(result);
@@ -497,29 +497,66 @@ router.get('/classi/:classe',
     }
 );
 
-// Route per ottenere la classe del paninaro
+// Route to get all orders for the class of the paninaro
 router.get('/classe',
     authenticateJWT,
     authorizeRole(['paninaro']),
     async (req, res) => {
         const connection = await pool.getConnection();
         try {
-            const [classe] = await connection.query(
+            // First, get the class of the paninaro
+            const [classeResult] = await connection.query(
                 'SELECT classe FROM Utente WHERE idUtente = ?',
                 [req.user.id]
             );
 
-            if (!classe[0]?.classe) {
+            if (!classeResult[0]?.classe) {
                 return res.status(404).json({ error: 'Nessuna classe assegnata' });
             }
 
-            res.json({ 
-                classe: classe[0].classe,
-                idUtente: req.user.id 
-            });
+            const classeId = classeResult[0].classe;
+
+            // Now, get all orders for users in the same class
+            const query = `
+                SELECT
+                    u.idUtente AS userId,
+                    JSON_ARRAYAGG(
+                        JSON_OBJECT(
+                            'idOrdineSingolo', os.idOrdine,
+                            'data', os.data,
+                            'prodotti', (
+                                SELECT JSON_ARRAYAGG(
+                                    JSON_OBJECT(
+                                        'idProdotto', p.idProdotto,
+                                        'nome', p.nome,
+                                        'quantita', dos.quantita,
+                                        'prezzo', p.prezzo
+                                    )
+                                )
+                                FROM DettagliOrdineSingolo dos
+                                JOIN Prodotto p ON dos.idProdotto = p.idProdotto
+                                WHERE dos.idOrdineSingolo = os.idOrdine
+                            )
+                        )
+                    ) AS ordini
+                FROM OrdineSingolo os
+                JOIN Utente u ON os.user = u.idUtente
+                WHERE u.classe = ?
+                GROUP BY u.idUtente
+            `;
+
+            const [orders] = await connection.execute(query, [classeId]);
+
+            // Format the results
+            const formattedOrders = orders.map(order => ({
+                userId: order.userId,
+                ordini: order.ordini
+            }));
+
+            res.json(formattedOrders);
 
         } catch (error) {
-            console.error('Errore nel recupero classe:', error);
+            console.error('Errore nel recupero ordini per la classe del paninaro:', error);
             res.status(500).json({ error: 'Errore del database' });
         } finally {
             connection.release();
@@ -527,7 +564,7 @@ router.get('/classe',
     }
 );
 
-// Route per conferma ordini singoli e creazione ordine di classe
+// Route to confirm individual orders and create class order
 router.put('/classe/conferma',
     authenticateJWT,
     authorizeRole(['paninaro']),
@@ -542,7 +579,7 @@ router.put('/classe/conferma',
             const giorniEnum = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
             const giorno = giorniEnum[new Date().getDay()];
 
-            // Verifica classe paninaro
+            // 1. Verify paninaro's class
             const [classePaninaro] = await connection.query(
                 'SELECT classe FROM Utente WHERE idUtente = ?',
                 [paninaroId]
@@ -553,7 +590,7 @@ router.put('/classe/conferma',
                 return res.status(403).json({ error: 'Paninaro non assegnato a nessuna classe' });
             }
 
-            // Trova ordini singoli non confermati
+            // 2. Find unconfirmed individual orders of the class
             const [ordiniDaConfermare] = await connection.query(`
                 SELECT os.idOrdine 
                 FROM OrdineSingolo os
@@ -571,7 +608,7 @@ router.put('/classe/conferma',
                 return res.status(404).json({ error: 'Nessun ordine da confermare per questo turno' });
             }
 
-            // Crea ordine di classe
+            // 3. Create new class order
             const [nuovoOrdineClasse] = await connection.query(`
                 INSERT INTO OrdineClasse 
                     (classe, data, nTurno, giorno, idResponsabile, confermato, preparato)
@@ -579,7 +616,7 @@ router.put('/classe/conferma',
                 [classePaninaro[0].classe, today, nTurno, giorno, paninaroId]
             );
 
-            // Collega gli ordini 
+            // 4. Link individual orders to the new class order
             await connection.query(`
                 UPDATE OrdineSingolo 
                 SET idOrdineClasse = ? 
