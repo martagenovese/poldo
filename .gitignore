@@ -1,4 +1,7 @@
 test.js
+secrets.env
+.DS_Store
+
 
 # Logs
 logs
