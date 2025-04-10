@@ -83,6 +83,7 @@ CREATE TABLE Prodotto (
                           temporaneo BOOLEAN NOT NULL DEFAULT false,
                           disponibilita INT NOT NULL DEFAULT 0,
                           attivo BOOLEAN NOT NULL DEFAULT true,
+                          elinato BOOLEAN NOT NULL DEFAULT false,
                           proprietario INT NOT NULL,
                           lastUpdate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                           FOREIGN KEY (proprietario) REFERENCES Gestione(idGestione)
