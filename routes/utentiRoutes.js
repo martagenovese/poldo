@@ -3,9 +3,7 @@ const router = express.Router();
 const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
-
-// gets
-
+// Gets
 router.get('/', authenticateJWT, authorizeRole('admin'), async (req, res) => {
     const connection = await pool.getConnection();
     try {
@@ -18,6 +16,7 @@ router.get('/', authenticateJWT, authorizeRole('admin'), async (req, res) => {
         connection.release();
     }
 });
+
 router.get('/:id', authenticateJWT, authorizeRole('admin'), async (req, res) => {
     const id = req.params.id;
     const connection = await pool.getConnection();
@@ -34,6 +33,7 @@ router.get('/:id', authenticateJWT, authorizeRole('admin'), async (req, res) => 
         connection.release();
     }
 });
+
 router.get('/io', authenticateJWT, async (req, res) => {
     const id = req.user.id;
     const connection = await pool.getConnection();
@@ -50,6 +50,7 @@ router.get('/io', authenticateJWT, async (req, res) => {
         connection.release();
     }
 });
+
 router.get('/paninari', authenticateJWT, authorizeRole('admin'), async (req, res) => {
     const connection = await pool.getConnection();
     try {
@@ -62,6 +63,7 @@ router.get('/paninari', authenticateJWT, authorizeRole('admin'), async (req, res
         connection.release();
     }
 });
+
 router.get('/banned', authenticateJWT, authorizeRole('admin'), async (req, res) => {
     const connection = await pool.getConnection();
     try {
@@ -77,7 +79,6 @@ router.get('/banned', authenticateJWT, authorizeRole('admin'), async (req, res) 
 
 
 // patches
-
 router.patch('/:id/ban', authenticateJWT, authorizeRole('admin'), async (req, res) => {
     const id = req.params.id;
     const connection = await pool.getConnection();
@@ -94,6 +95,7 @@ router.patch('/:id/ban', authenticateJWT, authorizeRole('admin'), async (req, re
         connection.release();
     }
 });
+
 router.patch('/:id/unban', authenticateJWT, authorizeRole('admin'), async (req, res) => {
     const id = req.params.id;
     const connection = await pool.getConnection();
@@ -110,6 +112,7 @@ router.patch('/:id/unban', authenticateJWT, authorizeRole('admin'), async (req, 
         connection.release();
     }
 });
+
 router.patch('/:id/ruolo', authenticateJWT, authorizeRole('admin'), async (req, res) => {
     const id = req.params.id;
     const { ruolo } = req.body;

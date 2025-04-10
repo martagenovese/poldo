@@ -73,7 +73,9 @@ router.post('/login', async (req, res) => {
             'SELECT utenteId as id, idUtenteGestione as idGestione, password FROM UtenteGestione WHERE username = ?',
             [username]
         );
-        
+
+        //TODO: da criptare e cambiare if
+
         // if (!rows[0] || !bcrypt.compareSync(password, rows[0].password)) {
         //     return res.status(401).json({ message: 'Invalid credentials' });
         // }

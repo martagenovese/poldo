@@ -3,8 +3,7 @@ const router = express.Router();
 const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
-
-// gets
+// Gets
 router.get('/', authenticateJWT, async (req, res) => {
     try {
         const [rows] = await pool.query('SELECT * FROM Tag');

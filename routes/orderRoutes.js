@@ -79,7 +79,7 @@ router.get('/',
                 query += ` AND oc.preparato = ?`;
                 params.push(Number(preparato));
             }
-
+          
             query += ` GROUP BY os.idOrdine ORDER BY os.data DESC, os.idOrdine DESC`;
 
             const [orders] = await connection.execute(query, params);
@@ -563,7 +563,6 @@ router.get('/classe',
         }
     }
 );
-
 
 // Route to confirm individual orders and create class order
 router.put('/classe/conferma',
