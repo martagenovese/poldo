@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
+
 router.get('/', authenticateJWT, async (req, res) => {
     const connection = await pool.getConnection();
     try {
@@ -17,7 +18,7 @@ router.get('/', authenticateJWT, async (req, res) => {
     }
 });
 
-router.post('/', authenticateJWT, authorizeRole('admin'), async (req, res) => {
+router.post('/', authenticateJWT, authorizeRole(['admin']), async (req, res) => {
     const { n, data, oraInizioOrdine, oraFineOrdine, oraInizioRitiro, oraFineRitiro } = req.body;
     const connection = await pool.getConnection();
     try {
@@ -30,14 +31,13 @@ router.post('/', authenticateJWT, authorizeRole('admin'), async (req, res) => {
     } finally {
         connection.release();
     }
-}
-);
+});
 
-router.put('/:id', authenticateJWT, authorizeRole('admin'), async (req, res) => {
+router.put('/:turnoId', authenticateJWT, authorizeRole(['admin']), async (req, res) => {
     const { n, data, oraInizioOrdine, oraFineOrdine, oraInizioRitiro, oraFineRitiro } = req.body;
     const connection = await pool.getConnection();
     try {
-        const [result] = await connection.query('UPDATE turni SET n = ?, data = ?, oraInizioOrdine = ?, oraFineOrdine = ?, oraInizioRitiro = ?, oraFineRitiro = ? WHERE id = ?', [n, data, oraInizioOrdine, oraFineOrdine, oraInizioRitiro, oraFineRitiro, req.params.id]);
+        const [result] = await connection.query('UPDATE turni SET n = ?, data = ?, oraInizioOrdine = ?, oraFineOrdine = ?, oraInizioRitiro = ?, oraFineRitiro = ? WHERE id = ?', [n, data, oraInizioOrdine, oraFineOrdine, oraInizioRitiro, oraFineRitiro, req.params.turnoId]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Turno non trovato' });
         }
@@ -49,14 +49,12 @@ router.put('/:id', authenticateJWT, authorizeRole('admin'), async (req, res) => 
     } finally {
         connection.release();
     }
-}
-);
+});
 
-
-router.delete('/:id', authenticateJWT, authorizeRole('admin'), async (req, res) => {
+router.delete('/:turnoId', authenticateJWT, authorizeRole(['admin']), async (req, res) => {
     const connection = await pool.getConnection();
     try {
-        const [result] = await connection.query('DELETE FROM Turno WHERE id = ?', [req.params.id]);
+        const [result] = await connection.query('DELETE FROM Turno WHERE id = ?', [req.params.turnoId]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Turno non trovato' });
         }
@@ -68,5 +66,7 @@ router.delete('/:id', authenticateJWT, authorizeRole('admin'), async (req, res) 
     } finally {
         connection.release();
     }
-}
-);
+});
+
+
+module.exports = router;

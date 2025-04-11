@@ -147,7 +147,6 @@ async function filterProducts(filters) {
 }
 
 
-
 router.get('/', authenticateJWT, async (req, res) => {
     const connection = await pool.getConnection();
     try {
@@ -516,7 +515,6 @@ router.patch('/:id/setStatus', authenticateJWT, authorizeRole(['gestore', 'admin
         connection.release();
     }
 });
-
 
 
 module.exports = router;

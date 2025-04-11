@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
+
 // Gets
 router.get('/', authenticateJWT, async (req, res) => {
     try {
@@ -32,16 +33,15 @@ router.get('/gestioni', authenticateJWT, async (req, res) => {
     }
 });
 
-
 // ---
 router.post('/', authenticateJWT, authorizeRole(['admin', 'gestore']), async (req, res) => {
-    const { name } = req.body;
-    if (!name) {
+    const tagName = req.body;
+    if (!tagName) {
         return res.status(400).json({ error: 'Name is required' });
     }
     try {
-        const [result] = await pool.query('INSERT INTO Tag (nome) VALUES (?)', [name]);
-        res.status(201).json({ id: result.insertId, name });
+        const [result] = await pool.query('INSERT INTO Tag (nome) VALUES (?)', [tagName]);
+        res.status(201).json({ id: result.insertId, tagName });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal server error' });
@@ -50,18 +50,18 @@ router.post('/', authenticateJWT, authorizeRole(['admin', 'gestore']), async (re
     }
 });
 
-router.put('/:id', authenticateJWT, authorizeRole(['admin', 'gestore']), async (req, res) => {
-    const { id } = req.params.id;
-    const { name } = req.body;
-    if (!name) {
-        return res.status(400).json({ error: 'Name is required' });
+router.put('/:oldTagName', authenticateJWT, authorizeRole(['admin', 'gestore']), async (req, res) => {
+    const oldTagName = req.params.oldTagName;
+    const { newTagName } = req.body;
+    if (!tagName) {
+        return res.status(400).json({ error: 'tag name is required' });
     }
     try {
-        const [result] = await pool.query('UPDATE Tag SET nome = ? WHERE nome = ?', [name, id]);
+        const [result] = await pool.query('UPDATE Tag SET nome = ? WHERE nome = ?', [newTagName, oldTagName]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Tag not found' });
         }
-        res.json({ id, name });
+        res.json({ newTagName });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal server error' });
@@ -70,10 +70,10 @@ router.put('/:id', authenticateJWT, authorizeRole(['admin', 'gestore']), async (
     }
 });
 
-router.delete('/:id', authenticateJWT, authorizeRole(['admin', 'gestore']), async (req, res) => {
-    const { id } = req.params;
+router.delete('/:tagName', authenticateJWT, authorizeRole(['admin', 'gestore']), async (req, res) => {
+    const tagName = req.params.tagName;
     try {
-        const [result] = await pool.query('DELETE FROM Tag WHERE nome = ?', [id]);
+        const [result] = await pool.query('DELETE FROM Tag WHERE nome = ?', [tagName]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Tag not found' });
         }
@@ -85,3 +85,6 @@ router.delete('/:id', authenticateJWT, authorizeRole(['admin', 'gestore']), asyn
         connection.release();
     }
 });
+
+
+module.exports = router;
