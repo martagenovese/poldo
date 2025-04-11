@@ -146,7 +146,7 @@ async function filterProducts(filters) {
     }
 }
 
-
+// Ottieni tutti i prodotti
 router.get('/', authenticateJWT, async (req, res) => {
     const connection = await pool.getConnection();
     try {
@@ -188,15 +188,13 @@ router.get('/', authenticateJWT, async (req, res) => {
     }
 });
 
-
+// Ottieni tutti i prodotti per gestore o admin
 router.get('/all', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
     const connection = await pool.getConnection();
     try {
         const { ingredienti, nonIngredienti, tag, nonTag, prezzoMin, prezzoMax, temporaneo, disponibilita, attivo, orderBy, orderDirection } = req.query;
 
         const proprietario = req.user.ruolo === 'gestore' ? req.user.idGestione : req.query.proprietario;
-
-
 
         const filters = {
             ingredienti: ingredienti ? ingredienti.split(',') : [],
@@ -216,7 +214,6 @@ router.get('/all', authenticateJWT, authorizeRole(['gestore', 'admin']), async (
 
         const rows = await filterProducts(filters);
 
-
         if( rows.length === 0) {
             return res.status(404).json({ error: 'Nessun prodotto trovato' });
         }
@@ -235,6 +232,7 @@ router.get('/all', authenticateJWT, authorizeRole(['gestore', 'admin']), async (
     }
 });
 
+// Ottieni un prodotto specifico
 router.get('/:id', authenticateJWT, async (req, res) => {
     const connection = await pool.getConnection();
 
@@ -259,7 +257,6 @@ router.get('/:id', authenticateJWT, async (req, res) => {
         }
 
         const groupBy = ` GROUP BY ${selectFields}`;
-
 
         const [rows] = await connection.execute(query + groupBy, params);
         
@@ -290,7 +287,7 @@ router.get('/:id', authenticateJWT, async (req, res) => {
     }
 })
 
-
+// Crea un nuovo prodotto
 router.post('/', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
     const { 
         nome, 
@@ -382,6 +379,7 @@ router.post('/', authenticateJWT, authorizeRole(['gestore', 'admin']), async (re
     }
 });
 
+// Elimina un prodotto
 router.delete('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
     const connection = await pool.getConnection();
 
@@ -418,6 +416,7 @@ router.delete('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), asyn
     }
 })
 
+// Aggiorna un prodotto
 router.put('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
     const { nome, prezzo, descrizione, tags, ingredienti } = req.body;
     
@@ -446,7 +445,6 @@ router.put('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async (
             return res.status(404).json({ error: 'Prodotto non trovato o non tuo' });
         }
 
-
         if (tags && tags.length > 0) {
             await connection.execute(
                 'DELETE FROM ProdottoTag WHERE idProdotto = ?',
@@ -458,7 +456,6 @@ router.put('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async (
                 [tagData]
             );
         }
-
 
         if(ingredienti && ingredienti.length > 0) {
             await connection.execute(
@@ -472,7 +469,6 @@ router.put('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async (
             );
         }
 
-        
         await connection.commit();
         res.status(200).json({ message: 'Prodotto modificato con successo' });
     } catch (error) {
@@ -484,7 +480,7 @@ router.put('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async (
     }
 });
 
-
+// Modifica lo stato di un prodotto
 router.patch('/:id/setStatus', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
     const { attivo } = req.body;
 
@@ -515,6 +511,5 @@ router.patch('/:id/setStatus', authenticateJWT, authorizeRole(['gestore', 'admin
         connection.release();
     }
 });
-
 
 module.exports = router;

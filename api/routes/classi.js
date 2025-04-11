@@ -3,26 +3,32 @@ const router = express.Router();
 const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
-// Gets
+// Ottieni tutte le classi
 router.get('/', authenticateJWT, authorizeRole(['admin']), async (req, res) => {
     connection = await pool.getConnection();
     try {
         const [rows] = await connection.query('SELECT c.nome as classe, c.id FROM Classe c');
+        
+        if(rows.length === 0) {
+            return res.status(404).json({ error: 'Nessuna classe trovata' });
+        }
+        
         res.json(rows);
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Errore interno del server' });
     } finally {
         connection.release();
     }
 });
 
+// Ottieni la classe dell'utente
 router.get('/me', authenticateJWT, authorizeRole(['studente']), async (req, res) => {
     const userId = req.user.id;
     connection = await pool.getConnection();
     try {
         const [rows] = await connection.query(
-            `SELECT c.nome 
+            `SELECT c.nome as classe
              FROM Classe c 
              JOIN Utente u ON c.id = u.classe
              WHERE u.idUtente = ?`,
@@ -30,18 +36,19 @@ router.get('/me', authenticateJWT, authorizeRole(['studente']), async (req, res)
         );
 
         if (rows.length === 0) {
-            return res.status(404).json({ error: 'Classe not found' });
+            return res.status(404).json({ error: 'Classe non trovata' });
         }
 
         res.json(rows[0]);
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Errore interno del server' });
     } finally {
         connection.release();
     }
 });
 
+// Ottieni dettagli di una classe specifica
 router.get('/:classe', authenticateJWT, authorizeRole(['admin']), async (req, res) => {
     const classe = req.params.classe;
     const { bannato, ruolo } = req.query;
@@ -49,7 +56,7 @@ router.get('/:classe', authenticateJWT, authorizeRole(['admin']), async (req, re
     
     try {
         let query = `
-            SELECT u.idUtente, u.mail, u.bannato, u.google_id, u.foto_url, u.ruolo 
+            SELECT u.idUtente, u.mail, u.bannato, u.foto_url, u.ruolo 
             FROM Classe c 
             JOIN Utente u ON c.id = u.classe
             WHERE c.nome = ?
@@ -69,16 +76,15 @@ router.get('/:classe', authenticateJWT, authorizeRole(['admin']), async (req, re
         const [rows] = await connection.query(query, queryParams);
         
         if (rows.length === 0) {
-            return res.status(404).json({ error: 'Classe not found' });
+            return res.status(404).json({ error: 'Classe non trovata' });
         }
         res.json(rows);
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Errore interno del server' });
     } finally {
         connection.release();
     }
 });
-
 
 module.exports = router;

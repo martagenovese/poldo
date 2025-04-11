@@ -3,7 +3,7 @@ const router = express.Router();
 const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
-// Helper function to parse JSON safely
+// Funzione di supporto per analizzare JSON in modo sicuro
 const parseJSON = (data) => {
     try {
         return JSON.parse(data);
@@ -12,13 +12,12 @@ const parseJSON = (data) => {
     }
 };
 
-// Helper function to format date as yyyy-mm-dd
+// Funzione di supporto per formattare la data come yyyy-mm-dd
 const formatDate = (date) => {
     return new Date(date).toISOString().slice(0, 10);
 };
 
-
-// Route to get all individual orders
+// Ottieni tutti gli ordini individuali
 router.get('/',
     authenticateJWT,
     authorizeRole(['admin']),
@@ -102,7 +101,7 @@ router.get('/',
     }
 );
 
-// Route to get all orders grouped by class
+// Ottieni tutti gli ordini raggruppati per classe
 router.get('/classi',
     authenticateJWT,
     authorizeRole(['admin', 'gestore']),
@@ -192,7 +191,7 @@ router.get('/classi',
     }
 );
 
-// Route to get user's own orders
+// Ottieni i propri ordini
 router.get('/me',
     authenticateJWT,
     authorizeRole(['admin', 'paninaro', 'studente', 'prof', 'segreteria']),
@@ -258,7 +257,7 @@ router.get('/me',
     }
 );
 
-// Route to create a new order
+// Crea un nuovo ordine
 router.post('/',
     authenticateJWT,
     authorizeRole(['studente', 'prof', 'segreteria', 'terminale', 'admin']),
@@ -405,7 +404,7 @@ router.post('/',
     }
 );
 
-// Route to get class orders grouped by a specific class name
+// Ottieni ordini di classe raggruppati per nome di classe specifico
 router.get('/classi/:classe',
     authenticateJWT,
     authorizeRole(['admin', 'gestore']),
@@ -497,7 +496,7 @@ router.get('/classi/:classe',
     }
 );
 
-// Route to get all orders for the class of the paninaro
+// Ottieni tutti gli ordini per la classe del paninaro
 router.get('/classi/me',
     authenticateJWT,
     authorizeRole(['paninaro']),
@@ -561,7 +560,7 @@ router.get('/classi/me',
     }
 );
 
-// Route to confirm individual orders and create class order
+// Conferma ordini individuali e crea ordine di classe
 router.put('/classi/me/conferma',
     authenticateJWT,
     authorizeRole(['paninaro']),
@@ -636,6 +635,5 @@ router.put('/classi/me/conferma',
         }
     }
 );
-
 
 module.exports = router;

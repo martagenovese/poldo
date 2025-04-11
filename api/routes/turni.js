@@ -3,11 +3,23 @@ const router = express.Router();
 const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
+function getQueryTurni(ruolo, giorno) {
+    if(['admin', "professore"].includes(ruolo)) {
+        return `SELECT * FROM Turno WHERE n=0 AND giorno = ?`;
+    }
+    return `SELECT * FROM Turno WHERE n!=0 AND giorno = ?`;
+}
+
 
 router.get('/', authenticateJWT, async (req, res) => {
     const connection = await pool.getConnection();
     try {
-        const [rows] = await connection.query('SELECT * FROM Turno');
+        const [rows] = await connection.query(getQueryTurni(req.user.ruolo, req.query.giorno), [req.query.giorno]);
+        
+        if(rows.length === 0) {
+            return res.status(404).json({ error: 'Nessun turno trovato' });
+        }
+        
         res.json(rows);
     }
     catch (error) {
@@ -19,25 +31,32 @@ router.get('/', authenticateJWT, async (req, res) => {
 });
 
 router.post('/', authenticateJWT, authorizeRole(['admin']), async (req, res) => {
-    const { n, data, oraInizioOrdine, oraFineOrdine, oraInizioRitiro, oraFineRitiro } = req.body;
+    const { n, giorno, oraInizioOrdine, oraFineOrdine, oraInizioRitiro, oraFineRitiro } = req.body;
     const connection = await pool.getConnection();
     try {
-        const [result] = await connection.query('INSERT INTO Turno (n, data, oraInizioOrdine, oraFineOrdine, oraInizioRitiro, oraFineRitiro) VALUES (?, ?, ?, ?, ?, ?)', [n, data, oraInizioOrdine, oraFineOrdine, oraInizioRitiro, oraFineRitiro]);
+        const [result] = await connection.query('INSERT INTO Turno (n, giorno, oraInizioOrdine, oraFineOrdine, oraInizioRitiro, oraFineRitiro) VALUES (?, ?, ?, ?, ?, ?)', [n, giorno, oraInizioOrdine, oraFineOrdine, oraInizioRitiro, oraFineRitiro]);
         res.status(201).json({ id: result.insertId });
     }
     catch (error) {
         console.error('Error creating turn:', error);
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ error: 'Turno già esistente' });
+        }
         res.status(500).json({ error: 'Errore interno del server' });
     } finally {
         connection.release();
     }
 });
 
-router.put('/:turnoId', authenticateJWT, authorizeRole(['admin']), async (req, res) => {
-    const { n, data, oraInizioOrdine, oraFineOrdine, oraInizioRitiro, oraFineRitiro } = req.body;
+router.put('/:giorno/:n', authenticateJWT, authorizeRole(['admin']), async (req, res) => {
+    const { oraInizioOrdine, oraFineOrdine, oraInizioRitiro, oraFineRitiro } = req.body;
+    const { giorno, n } = req.params;
+    if (!oraInizioOrdine || !oraFineOrdine || !oraInizioRitiro || !oraFineRitiro) {
+        return res.status(400).json({ error: 'Tutti i campi sono richiesti' });
+    }
     const connection = await pool.getConnection();
     try {
-        const [result] = await connection.query('UPDATE turni SET n = ?, data = ?, oraInizioOrdine = ?, oraFineOrdine = ?, oraInizioRitiro = ?, oraFineRitiro = ? WHERE id = ?', [n, data, oraInizioOrdine, oraFineOrdine, oraInizioRitiro, oraFineRitiro, req.params.turnoId]);
+        const [result] = await connection.query('UPDATE turni SET oraInizioOrdine = ?, oraFineOrdine = ?, oraInizioRitiro = ?, oraFineRitiro = ? WHERE giorno = ? ANd n = ?', [oraInizioOrdine, oraFineOrdine, oraInizioRitiro, oraFineRitiro, giorno, n]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Turno non trovato' });
         }
@@ -45,16 +64,20 @@ router.put('/:turnoId', authenticateJWT, authorizeRole(['admin']), async (req, r
     }
     catch (error) {
         console.error('Error updating turno:', error);
+        if(error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ error: 'Turno già esistente' });
+        }
         res.status(500).json({ error: 'Errore interno del server' });
     } finally {
         connection.release();
     }
 });
 
-router.delete('/:turnoId', authenticateJWT, authorizeRole(['admin']), async (req, res) => {
+router.delete('/:giorno/:n', authenticateJWT, authorizeRole(['admin']), async (req, res) => {
     const connection = await pool.getConnection();
+    const { giorno, n } = req.params;
     try {
-        const [result] = await connection.query('DELETE FROM Turno WHERE id = ?', [req.params.turnoId]);
+        const [result] = await connection.query('DELETE FROM Turno WHERE giorno= ? AND n = ?', [giorno, n]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Turno non trovato' });
         }

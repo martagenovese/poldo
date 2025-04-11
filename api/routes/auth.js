@@ -3,10 +3,8 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const passport = require('passport');
 const pool = require('../utils/db');
-const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const jwt = require('jsonwebtoken');
-
 
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
@@ -47,7 +45,6 @@ async (accessToken, refreshToken, profile, done) => {
     }
 }));
 
-
 // Google OAuth
 router.get('/google', passport.authenticate('google', { 
     scope: ['profile', 'email'], 
@@ -61,7 +58,7 @@ router.get('/google/callback', passport.authenticate('google', { failureRedirect
         { expiresIn: '1y' }
     );
     
-    //TODO: change
+    //TODO: cambiare
     res.status(200).json({token: token});
 });
 
@@ -77,11 +74,11 @@ router.post('/login', async (req, res) => {
         //TODO: da criptare e cambiare if
 
         // if (!rows[0] || !bcrypt.compareSync(password, rows[0].password)) {
-        //     return res.status(401).json({ message: 'Invalid credentials' });
+        //     return res.status(401).json({ message: 'Credenziali non valide' });
         // }
 
         if(!rows[0] || rows[0].password !== password) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            return res.status(401).json({ message: 'Credenziali non valide' });
         }
         
         const token = jwt.sign(
@@ -95,6 +92,6 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// Activate Paninaro role
+// Attivare ruolo Paninaro
 
 module.exports = router;

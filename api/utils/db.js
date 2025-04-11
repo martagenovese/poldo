@@ -90,11 +90,11 @@ CREATE TABLE Prodotto (
 );
 
 CREATE TABLE Tag (
-                     nome VARCHAR(20) PRIMARY KEY
+                    nome VARCHAR(20) PRIMARY KEY
 );
 
 CREATE TABLE Ingrediente (
-                             nome VARCHAR(20) PRIMARY KEY
+                            nome VARCHAR(20) PRIMARY KEY
 );
 
 CREATE TABLE DettagliOrdineSingolo (
