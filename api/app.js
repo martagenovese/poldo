@@ -2,11 +2,13 @@ require('dotenv').config({ path: 'secrets.env' });
 
 const express = require('express');
 const logger = require('./utils/logger');
-const authRoutes = require('./routes/authRoutes');
-const classiRoutes = require('./routes/classiRoutes');
-const productRoutes = require('./routes/productRoutes');
-const orderRoutes = require('./routes/orderRoutes');
-const ingredientsRoutes = require('./routes/ingredientsRoutes');
+const authRoutes = require('./routes/auth');
+const classiRoutes = require('./routes/classi');
+const utentiRoutes = require('./routes/utenti');
+const productRoutes = require('./routes/prodotti');
+const orderRoutes = require('./routes/ordini');
+const ingredientsRoutes = require('./routes/ingredienti');
+const tagRoutes = require('./routes/tag');
 //const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
@@ -22,11 +24,12 @@ app.use((req, res, next) => {
 // Routes
 app.use("/v1/auth", authRoutes);
 app.use("/v1/classi", classiRoutes);
+app.use("/v1/utenti", utentiRoutes);
 //app.use(adminRoutes);
 app.use("/v1/prodotti", productRoutes);
 app.use('/v1/ordini', orderRoutes);
 app.use('/v1/ingredienti', ingredientsRoutes);
-
+app.use('/v1/tag', tagRoutes);
 //app.use(reportRoutes);
 
 // Error handling

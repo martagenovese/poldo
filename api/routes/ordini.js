@@ -17,6 +17,7 @@ const formatDate = (date) => {
     return new Date(date).toISOString().slice(0, 10);
 };
 
+
 // Route to get all individual orders
 router.get('/',
     authenticateJWT,
@@ -174,7 +175,6 @@ router.get('/classi',
 
             const [results] = await connection.execute(query, params);
 
-            // Format the results
             const formatted = results.map(row => ({
                 classe: row.classe,
                 data: formatDate(row.data),
@@ -498,13 +498,12 @@ router.get('/classi/:classe',
 );
 
 // Route to get all orders for the class of the paninaro
-router.get('/miaClasse',
+router.get('/classi/me',
     authenticateJWT,
     authorizeRole(['paninaro']),
     async (req, res) => {
         const connection = await pool.getConnection();
         try {
-            // First, get the class of the paninaro
             const [classeResult] = await connection.query(
                 'SELECT classe FROM Utente WHERE idUtente = ?',
                 [req.user.id]
@@ -516,7 +515,6 @@ router.get('/miaClasse',
 
             const classeId = classeResult[0].classe;
 
-            // Now, get all orders for users in the same class
             const query = `
                 SELECT
                     u.idUtente AS userId,
@@ -547,7 +545,6 @@ router.get('/miaClasse',
 
             const [orders] = await connection.execute(query, [classeId]);
 
-            // Format the results
             const formattedOrders = orders.map(order => ({
                 userId: order.userId,
                 ordini: order.ordini
@@ -565,7 +562,7 @@ router.get('/miaClasse',
 );
 
 // Route to confirm individual orders and create class order
-router.put('/miaClasse/conferma',
+router.put('/classi/me/conferma',
     authenticateJWT,
     authorizeRole(['paninaro']),
     async (req, res) => {
@@ -579,7 +576,6 @@ router.put('/miaClasse/conferma',
             const giorniEnum = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
             const giorno = giorniEnum[new Date().getDay()];
 
-            // 1. Verify paninaro's class
             const [classePaninaro] = await connection.query(
                 'SELECT classe FROM Utente WHERE idUtente = ?',
                 [paninaroId]
@@ -590,7 +586,6 @@ router.put('/miaClasse/conferma',
                 return res.status(403).json({ error: 'Paninaro non assegnato a nessuna classe' });
             }
 
-            // 2. Find unconfirmed individual orders of the class
             const [ordiniDaConfermare] = await connection.query(`
                 SELECT os.idOrdine 
                 FROM OrdineSingolo os
@@ -608,7 +603,6 @@ router.put('/miaClasse/conferma',
                 return res.status(404).json({ error: 'Nessun ordine da confermare per questo turno' });
             }
 
-            // 3. Create new class order
             const [nuovoOrdineClasse] = await connection.query(`
                 INSERT INTO OrdineClasse 
                     (classe, data, nTurno, giorno, idResponsabile, confermato, preparato)
@@ -616,7 +610,6 @@ router.put('/miaClasse/conferma',
                 [classePaninaro[0].classe, today, nTurno, giorno, paninaroId]
             );
 
-            // 4. Link individual orders to the new class order
             await connection.query(`
                 UPDATE OrdineSingolo 
                 SET idOrdineClasse = ? 
@@ -643,5 +636,6 @@ router.put('/miaClasse/conferma',
         }
     }
 );
+
 
 module.exports = router;

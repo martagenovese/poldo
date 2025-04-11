@@ -20,12 +20,11 @@ module.exports = {
     },
 
     authorizeRole: (roles) => (req, res, next) => {
-        console.log(roles);
         if (!req.user) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
         console.log("user: " + req.user.ruolo);
-        console.log("ruoli ammessi: " + JSON.stringify(roles));
+        console.log("ruoli ammessi: " + roles);
         if (roles.includes(req.user.ruolo) || (roles.includes('studente') && req.user.ruolo === 'paninaro')) {
             next();
         } else {
