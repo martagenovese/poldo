@@ -3,6 +3,7 @@ require('dotenv').config({ path: 'secrets.env' });
 const express = require('express');
 const logger = require('./utils/logger');
 const authRoutes = require('./routes/authRoutes');
+const classiRoutes = require('./routes/classiRoutes');
 const productRoutes = require('./routes/productRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const ingredientsRoutes = require('./routes/ingredientsRoutes');
@@ -20,6 +21,7 @@ app.use((req, res, next) => {
 
 // Routes
 app.use("/v1/auth", authRoutes);
+app.use("/v1/classi", classiRoutes);
 //app.use(adminRoutes);
 app.use("/v1/prodotti", productRoutes);
 app.use('/v1/ordini', orderRoutes);

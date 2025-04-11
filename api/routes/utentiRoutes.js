@@ -34,7 +34,7 @@ router.get('/:id', authenticateJWT, authorizeRole('admin'), async (req, res) => 
     }
 });
 
-router.get('/io', authenticateJWT, async (req, res) => {
+router.get('/me', authenticateJWT, async (req, res) => {
     const id = req.user.id;
     const connection = await pool.getConnection();
     try {
