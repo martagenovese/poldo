@@ -20,6 +20,7 @@ module.exports = {
     },
 
     authorizeRole: (roles) => (req, res, next) => {
+        console.log(roles);
         if (!req.user) {
             return res.status(401).json({ error: 'Unauthorized' });
         }

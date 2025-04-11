@@ -498,7 +498,7 @@ router.get('/classi/:classe',
 );
 
 // Route to get all orders for the class of the paninaro
-router.get('/classe',
+router.get('/miaClasse',
     authenticateJWT,
     authorizeRole(['paninaro']),
     async (req, res) => {
@@ -565,7 +565,7 @@ router.get('/classe',
 );
 
 // Route to confirm individual orders and create class order
-router.put('/classe/conferma',
+router.put('/miaClasse/conferma',
     authenticateJWT,
     authorizeRole(['paninaro']),
     async (req, res) => {
