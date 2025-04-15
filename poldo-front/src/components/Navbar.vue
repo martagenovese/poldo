@@ -40,7 +40,7 @@ const t = [
 
 <template>
     <div class="navbar">
-        <menuIcon @click="toggleMenu"/>
+        < @click="toggleMenu"/>
 
         <div class="dropdown-menu" v-show="showMenu">
             <ul>
@@ -60,6 +60,7 @@ const t = [
 
 <style>
 .navbar {
+    height: 70px;
     width: 100%;
     display: flex;
     justify-content: space-between;

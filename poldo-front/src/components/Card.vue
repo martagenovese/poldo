@@ -1,4 +1,5 @@
 <script setup lang="ts">
+
 defineProps<{
   width?: string;
   height?: string;
@@ -13,6 +14,9 @@ defineProps<{
       height: height || 'auto'
     }"
   >
+
+  <slot></slot>
+
   </div>
 </template>
 

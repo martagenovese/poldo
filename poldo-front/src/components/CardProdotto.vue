@@ -6,15 +6,13 @@ defineProps<{
   imageAlt?: string
   title: string
   description?: string
-  width?: string
-  height?: string
 }>()
 </script>
 
 <template>
-  <Card :width="width" :height="height">
+  <Card width="200px" height="250px">
     <div class="card-prodotto">
-      <img :src="imageSrc" :alt="imageAlt || title" class="product-image" />
+      <img :src="imageSrc" :alt="imageAlt" />
 
       <div class="info">
         <h3 class="title">{{ title }}</h3>
@@ -26,32 +24,35 @@ defineProps<{
 
 <style scoped>
 .card-prodotto {
-  width: 100px;
-  height: 100px;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-
-.product-image {
-  width: 100%;
-  height: auto;
-  object-fit: cover;
-  margin-bottom: 10px;
+  padding: 16px;
+  box-sizing: border-box;
 }
 
 .info {
   text-align: center;
+  width: 100%;
 }
 
 .title {
   font-size: 1.2rem;
   margin: 0;
+  margin-bottom: 8px;
 }
 
 .description {
   font-size: 0.95rem;
   color: #555;
   margin-top: 5px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .description {
+    color: #aaa;
+  }
 }
 </style>

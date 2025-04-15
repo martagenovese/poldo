@@ -2,7 +2,6 @@
 defineProps<{
   columns?: number
   gap?: string
-  cards: Array<any>
 }>()
 </script>
 
@@ -14,12 +13,7 @@ defineProps<{
       'gap': gap || '20px'
     }"
   >
-    <component
-      v-for="(card, index) in cards"
-      :key="index"
-      :is="card.component"
-      v-bind="card.props"
-    />
+    <slot></slot>
   </div>
 </template>
 
