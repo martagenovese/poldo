@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import menuIcon from './icons/IconMenu.vue'
+import IconMenu from './icons/IconMenu.vue'
 
 const router = useRouter()
 const showMenu = ref(false)
@@ -40,7 +40,9 @@ const t = [
 
 <template>
     <div class="navbar">
-        < @click="toggleMenu"/>
+        <div class="menu-icon" @click="toggleMenu">
+            <IconMenu />
+        </div>
 
         <div class="dropdown-menu" v-show="showMenu">
             <ul>
@@ -78,6 +80,47 @@ const t = [
     padding: 0.5rem 1rem;
 }
 
+.menu-icon {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 70px;
+    left: 0;
+    background-color: #ffcc00;
+    border-radius: 0 0 10px 10px;
+    width: 200px;
+    z-index: 100;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.dropdown-menu ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.dropdown-menu li {
+    padding: 0;
+}
+
+.dropdown-menu a {
+    display: block;
+    padding: 12px 16px;
+    text-decoration: none;
+    color: white;
+}
+
+.dropdown-menu a:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
 #img-poldo {
     position: absolute;
     left: 50vw;
@@ -95,4 +138,3 @@ const t = [
     border-radius: 50%;
 }
 </style>
-  
