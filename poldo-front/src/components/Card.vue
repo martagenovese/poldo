@@ -27,17 +27,9 @@ defineProps<{
   margin-top: 20px;
   transition: all 0.3s;
   
-  /* Stile predefinito (light mode) */
-  background: var(--vt-c-white);
-  color: var(--vt-c-black);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-@media (prefers-color-scheme: dark) {
-  .card {
-    background: var(--vt-c-black);
-    color: var(--vt-c-white);
-    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
-  }
+  /* Use our theme variables */
+  background: var(--card-bg);
+  color: var(--card-text);
+  box-shadow: 0 2px 8px var(--card-shadow);
 }
 </style>

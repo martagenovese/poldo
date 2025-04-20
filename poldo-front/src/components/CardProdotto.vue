@@ -42,17 +42,18 @@ defineProps<{
   font-size: 1.2rem;
   margin: 0;
   margin-bottom: 8px;
+  color: var(--card-text);
 }
 
 .description {
   font-size: 0.95rem;
-  color: #555;
+  color: var(--color-text);
   margin-top: 5px;
 }
 
 @media (prefers-color-scheme: dark) {
   .description {
-    color: #aaa;
+    color: var(--poldo-text);
   }
 }
 </style>

@@ -9,7 +9,7 @@ defineProps<{
   <div 
     class="card-grid"
     :style="{
-      'grid-template-columns': `repeat(${columns || 3}, 1fr)`,
+      'grid-template-columns': `repeat(${columns || 1}, 1fr)`,
       'gap': gap || '20px'
     }"
   >
@@ -21,6 +21,7 @@ defineProps<{
 .card-grid {
   display: grid;
   width: 100%;
-  margin-top: 30px;
+  margin-top: 10px;
+  justify-items: center; /* Centers the cards horizontally in their grid cells */
 }
 </style>

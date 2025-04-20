@@ -47,24 +47,28 @@ const clickPage = (pageId: number): void => {
 
 <style scoped>
 .menu-laterale {
-  margin: 15px;
-  border-radius: 15px;
+  margin: 0;
+  border-radius: 0 15px 15px 0;
   position: fixed;
   top: 85px;
   left: 0;
   max-width: 250px;
-  background-color: #f8f9fa;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  max-height: calc(100vh - 85px);
+  background-color: var(--menu-bg);
+  box-shadow: 2px 0 5px var(--card-shadow);
   padding: 20px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
-  justify-content: center;
+  justify-content: flex-start;
+  transition: background-color 0.5s;
+  z-index: 10;
+  overflow-y: auto;
 }
 
 .menu-laterale > span {
-  color: black;
+  color: var(--menu-text);
   cursor: pointer;
   transition: opacity 0.3s ease;
 }

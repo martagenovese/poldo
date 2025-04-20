@@ -3,14 +3,14 @@
 </script>
 
 <template>
-  <div class="ordine">
-    <h1>Ordine</h1>
+  <div class="carrello">
+    <h1>Carrello</h1>
     <p>This page is currently under development.</p>
   </div>
 </template>
 
 <style scoped>
-.ordine {
+.carrello {
   padding: 1rem;
 }
 </style>

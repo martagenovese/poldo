@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import IconMenu from './icons/IconMenu.vue'
 
 const router = useRouter()
+const route = useRoute()
 const showMenu = ref(false)
 
 defineProps<{
@@ -15,9 +16,19 @@ const toggleMenu = () => {
   showMenu.value = !showMenu.value
 }
 
-const filteredRoutes = router.getRoutes().filter(route => 
-  route.name && !route.path.includes(':')
-)
+// Function to get page title based on current route
+const pageTitle = computed(() => {
+  // Get name from the current route
+  const routeName = route.name?.toString() || '';
+  
+  // Return formatted title or default to 'Home' if not found
+  if (routeName === 'home') return 'Home';
+  if (routeName === 'prodotti') return 'Prodotti';
+  if (routeName === 'carrello') return 'Carrello';
+  if (routeName === 'about') return 'About';
+  
+  return 'Home'; // Default fallback
+})
 
 const t = [
     {
@@ -40,9 +51,13 @@ const t = [
 
 <template>
     <div class="navbar">
-        <div class="menu-icon" @click="toggleMenu">
-            <IconMenu />
+        <div class="navbar-left">
+            <div class="menu-icon" @click="toggleMenu">
+                <IconMenu />
+            </div>
+            <span class="titolo-pagina">Poldo {{ pageTitle }}</span>
         </div>
+
 
         <div class="dropdown-menu" v-show="showMenu">
             <ul>
@@ -54,7 +69,6 @@ const t = [
             </ul>
         </div>
 
-        <div id="img-poldo"></div>
         <img :src="img_profilo" alt="Profilo" />
     </div>
 </template>
@@ -68,14 +82,20 @@ const t = [
     justify-content: space-between;
     align-items: center;
     padding: 1rem;
-    background-color: #ffcc00;
+    background-color: var(--navbar-bg);
     color: white;
     border-radius: 20px;
     position: relative;
 }
 
+.navbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 .navbar a {
-    color: white;
+    color: var(--navbar-text);
     text-decoration: none;
     padding: 0.5rem 1rem;
 }
@@ -93,11 +113,11 @@ const t = [
     position: absolute;
     top: 70px;
     left: 0;
-    background-color: #ffcc00;
+    background-color: var(--navbar-bg);
     border-radius: 0 0 10px 10px;
     width: 200px;
     z-index: 100;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px var(--card-shadow);
 }
 
 .dropdown-menu ul {
@@ -114,27 +134,20 @@ const t = [
     display: block;
     padding: 12px 16px;
     text-decoration: none;
-    color: white;
+    color: var(--navbar-text);
 }
 
 .dropdown-menu a:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
-#img-poldo {
-    position: absolute;
-    left: 50vw;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    height: 40px;
-    width: 15em;
-    background-color: red;
-    border-radius: 15px;
+    background-color: var(--poldo-background-soft);
 }
 
 .navbar>img {
     width: 40px;
     height: 40px;
     border-radius: 50%;
+}
+
+.titolo-pagina {
+    font-size: 1.5rem;
 }
 </style>

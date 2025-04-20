@@ -5,10 +5,10 @@
       class="sidebar" 
       :class="{ open: isSidebarOpen }"
     >
-      <!-- Toggle Button (now inside sidebar) -->
-      <button class="toggle-btn" @click="toggleSidebar">
+      <!-- Toggle Button  -->
+      <button class="filtri-btn" @click="toggleSidebar">
         <span v-if="isSidebarOpen">×</span>
-        <span v-else>☰</span>
+        <span v-else>Filtri</span>
       </button>
 
       <div class="sidebar-content" v-show="isSidebarOpen">
@@ -169,16 +169,17 @@ export default {
   position: fixed;
   top: 100px; /* Positioned under the Navbar */
   left: 0;
-  width: 30%;
-  height: calc(100% - 100px); /* Adjust height to stay under the Navbar */
-  background: var(--color-background, #fff);
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  width: 40%;
+  height: calc(100% - 110px); /* Adjust height to stay under the Navbar */
+  background: var(--color-background-soft);
+  box-shadow: 5px 0 5px var(--poldo-card-shadow);
   z-index: 20;
   display: flex;
   flex-direction: column;
   border-radius: 0 10px 10px 0;
   transition: transform 0.3s ease;
-  transform: translateX(-80%); /* Hide most of the sidebar by default */
+  transform: translateX(-70%); /* Hide most of the sidebar by default */
+  border-radius: 0 20px 20px 0;
 }
 
 .sidebar.open {
@@ -202,7 +203,7 @@ export default {
 }
 
 .filter-section {
-  border-bottom: 1px solid var(--color-border, #ddd); 
+  border-bottom: 1px solid var(--color-border); 
   padding-bottom: 10px;
 }
 
@@ -221,32 +222,36 @@ export default {
 }
 
 .apply-btn {
-  background-color: var(--color-primary, #4caf50); 
-  color: var(--color-on-primary, white); 
+  background-color: var(--poldo-accent); 
+  color: var(--poldo-text); 
 }
 
 .reset-btn {
-  background-color: var(--color-secondary, #f44336); 
-  color: var(--color-on-secondary, white); 
+  background-color: var(--red); 
+  color: var(--poldo-text); 
 }
 
-.toggle-btn {
+.filtri-btn {
   position: absolute;
-  top: 20px;
+  top: 40px;
   right: 10px;
-  background: #4caf50;
+  background: var(--poldo-primary);
   color: white;
   border: none;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 15px;
   cursor: pointer;
   z-index: 30;
-  }
+  transform: rotate(90deg);
+  transition: transform 0.3s ease;
+}
+
+.sidebar.open .filtri-btn {
+  transform: rotate(0deg);
+}
 
 /* Price Inputs */
 .price-inputs {
@@ -260,9 +265,9 @@ export default {
 }
 
 .price-inputs input {
-  width: 40px;
+  width: 30px;
   padding: 5px;
-  border: 1px solid var(--color-border, #ddd);
+  border: 1px solid var(--color-border);
   border-radius: 4px;
 }
 
