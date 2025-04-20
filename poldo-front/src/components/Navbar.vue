@@ -2,10 +2,13 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import IconMenu from './icons/IconMenu.vue'
+import { useTurnoStore } from '@/stores/turno'
 
 const router = useRouter()
 const route = useRoute()
 const showMenu = ref(false)
+// Use the shared turno store instead of local state
+const turnoStore = useTurnoStore()
 
 defineProps<{
   img_profilo: string
@@ -30,49 +33,74 @@ const pageTitle = computed(() => {
   return 'Home'; // Default fallback
 })
 
-const t = [
-    {
-        name: 'Home',
-        path: '/'
-    },
-    {
-        name: 'Prodotti',
-        path: '/prodotti'
-    },
-    {
-        name: 'Carrello',
-        path: '/carrello'
-    }
+// Check if a turno is selected using the store
+const hasSelectedTurno = computed(() => {
+  return !!turnoStore.turnoSelezionato
+})
+
+// Navigation routes that should be available in the dropdown
+const navRoutes = [
+  {
+    name: 'Home',
+    path: '/',
+    requiresTurno: false
+  },
+  {
+    name: 'Prodotti',
+    path: '/prodotti',
+    requiresTurno: true
+  },
+  {
+    name: 'Carrello',
+    path: '/carrello',
+    requiresTurno: true
+  }
 ]
+
+// Handle navigation with turno check
+const navigate = (path: string, requiresTurno: boolean) => {
+  if (requiresTurno && !hasSelectedTurno.value) {
+    // Don't navigate, just close the menu
+    showMenu.value = false
+  } else {
+    router.push(path)
+    showMenu.value = false
+  }
+}
 </script>
 
-
-<!-- https://lh3.googleusercontent.com/a/ACg8ocLPv09a9-uNbEG-ZfRm5bWQUlyLOpBaKxHz88de_c6vB8RvQ_Plrg=s96-c -->
-
 <template>
-    <div class="navbar">
-        <div class="navbar-left">
-            <div class="menu-icon" @click="toggleMenu">
-                <IconMenu />
-            </div>
-            <span class="titolo-pagina">Poldo {{ pageTitle }}</span>
+  <div class="navbar" :class="{ 'menu-open': showMenu }">
+    <div class="navbar-left">
+      <div class="menu-icon" @click="toggleMenu">
+        <IconMenu />
+      </div>
+      <div class="title-container">
+        <div class="main-title">Poldo {{ pageTitle }}</div>
+        <div class="turno-subtitle" v-if="hasSelectedTurno">
+          {{ turnoStore.turnoSelezionato === 'primo' ? 'Primo Turno' : 'Secondo Turno' }}
         </div>
-
-
-        <div class="dropdown-menu" v-show="showMenu">
-            <ul>
-                <li v-for="route in t" :key="route.path">
-                    <router-link :to="route.path" @click="toggleMenu">
-                        {{ route.name }}
-                    </router-link>
-                </li>
-            </ul>
-        </div>
-
-        <img :src="img_profilo" alt="Profilo" />
+      </div>
     </div>
-</template>
 
+    <div class="dropdown-menu" v-show="showMenu">
+      <ul>
+        <li v-for="route in navRoutes" :key="route.path">
+          <a 
+            href="#" 
+            @click.prevent="navigate(route.path, route.requiresTurno)"
+            :class="{ 'disabled': route.requiresTurno && !hasSelectedTurno }"
+          >
+            {{ route.name }}
+            <span v-if="route.requiresTurno && !hasSelectedTurno" class="lock-icon">🔒</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <img :src="img_profilo" alt="Profilo" />
+  </div>
+</template>
 
 <style>
 .navbar {
@@ -88,10 +116,14 @@ const t = [
     position: relative;
 }
 
+.navbar.menu-open {
+    border-radius: 20px 20px 20px 0;
+}
+
 .navbar-left {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
 }
 
 .navbar a {
@@ -115,7 +147,6 @@ const t = [
     left: 0;
     background-color: var(--navbar-bg);
     border-radius: 0 0 10px 10px;
-    width: 200px;
     z-index: 100;
     box-shadow: 0 4px 6px var(--card-shadow);
 }
@@ -134,7 +165,18 @@ const t = [
     display: block;
     padding: 12px 16px;
     text-decoration: none;
-    color: var(--navbar-text);
+    color: white;
+}
+
+.dropdown-menu a.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    position: relative;
+}
+
+.lock-icon {
+    margin-left: 8px;
+    font-size: 0.8rem;
 }
 
 .dropdown-menu a:hover {
@@ -147,7 +189,33 @@ const t = [
     border-radius: 50%;
 }
 
+.title-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.main-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.turno-subtitle {
+  font-size: 0.75rem;
+  opacity: 0.9;
+  margin-top: 0px;
+}
+
+.poldo-text {
+  display: none; /* Hide the old Poldo text */
+}
+
 .titolo-pagina {
-    font-size: 1.5rem;
+  display: none; /* Hide the old page title */
+}
+
+.turno-indicator {
+  display: none; /* Hide the old turno indicator */
 }
 </style>

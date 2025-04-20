@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div ref="filtriContainer">
     <!-- Sidebar -->
     <div 
       class="sidebar" 
@@ -13,31 +13,35 @@
 
       <div class="sidebar-content" v-show="isSidebarOpen">
         <div class="sidebar-header">
-          <h3>Filtri</h3>
+          <h3 style="font-weight: 500;">Filtri</h3>
         </div>
 
         <!-- Price Filter -->
         <div class="filter-section">
           <h4>Prezzo</h4>
           <div class="price-inputs">
-            <label for="min-price">Min:</label>
-            <input 
-              id="min-price" 
-              type="number" 
-              v-model.number="priceRange.min" 
-              :min="0" 
-              :max="priceRange.max" 
-              @input="validatePriceRange"
-            />
-            <label for="max-price">Max:</label>
-            <input 
-              id="max-price" 
-              type="number" 
-              v-model.number="priceRange.max" 
-              :min="priceRange.min" 
-              :max="100" 
-              @input="validatePriceRange"
-            />
+            <div class="price-row">
+              <label for="min-price">Min:</label>
+              <input 
+                id="min-price" 
+                type="number" 
+                v-model.number="priceRange.min" 
+                :min="0" 
+                :max="priceRange.max" 
+                @input="validatePriceRange"
+              />
+            </div>
+            <div class="price-row">
+              <label for="max-price">Max:</label>
+              <input 
+                id="max-price" 
+                type="number" 
+                v-model.number="priceRange.max" 
+                :min="priceRange.min" 
+                :max="100" 
+                @input="validatePriceRange"
+              />
+            </div>
           </div>
         </div>
 
@@ -81,6 +85,40 @@
           </div>
         </div>
 
+        <!-- Attivo Filter -->
+        <div class="filter-section">
+          <h4>Stato</h4>
+          <div class="radio-group">
+            <div class="item-row">
+              <input 
+                type="radio" 
+                id="attivo-tutti" 
+                :value="null" 
+                v-model="selections.attivo"
+              />
+              <label for="attivo-tutti">Tutti</label>
+            </div>
+            <div class="item-row">
+              <input 
+                type="radio" 
+                id="attivo-si" 
+                :value="true" 
+                v-model="selections.attivo"
+              />
+              <label for="attivo-si">Attivo</label>
+            </div>
+            <div class="item-row">
+              <input 
+                type="radio" 
+                id="attivo-no" 
+                :value="false" 
+                v-model="selections.attivo"
+              />
+              <label for="attivo-no">Non Attivo</label>
+            </div>
+          </div>
+        </div>
+
         <!-- Reset Button -->
         <div class="sidebar-actions">
           <button @click="resetFilters" class="reset-btn">Reset</button>
@@ -119,6 +157,7 @@ export default {
       selections: {
         ingredienti: [],
         categorie: null,
+        attivo: null,
       },
       priceRange: {
         min: 0,
@@ -129,6 +168,24 @@ export default {
   methods: {
     toggleSidebar() {
       this.isSidebarOpen = !this.isSidebarOpen;
+      
+      if (this.isSidebarOpen) {
+        // Add event listener when sidebar opens
+        setTimeout(() => {
+          document.addEventListener('click', this.handleOutsideClick);
+        }, 0);
+      } else {
+        // Remove event listener when sidebar closes manually
+        document.removeEventListener('click', this.handleOutsideClick);
+      }
+    },
+    handleOutsideClick(event) {
+      // Check if click is outside the sidebar
+      const container = this.$refs.filtriContainer;
+      if (container && !container.contains(event.target)) {
+        this.isSidebarOpen = false;
+        document.removeEventListener('click', this.handleOutsideClick);
+      }
     },
     validatePriceRange() {
       if (this.priceRange.min > this.priceRange.max) {
@@ -140,6 +197,7 @@ export default {
       const filters = {
         ingredienti: this.selections.ingredienti,
         categorie: this.selections.categorie,
+        attivo: this.selections.attivo,
         prezzo: this.priceRange,
       };
       this.$emit("filters-applied", filters);
@@ -147,14 +205,28 @@ export default {
     resetFilters() {
       this.selections.ingredienti = [];
       this.selections.categorie = null;
+      this.selections.attivo = null;
       this.priceRange.min = 0;
       this.priceRange.max = 100;
       this.applyFilters();
     },
   },
+  mounted() {
+    // Handle case where sidebar might be open on initial render
+    if (this.isSidebarOpen) {
+      setTimeout(() => {
+        document.addEventListener('click', this.handleOutsideClick);
+      }, 0);
+    }
+  },
+  beforeUnmount() {
+    // Clean up event listener when component is destroyed
+    document.removeEventListener('click', this.handleOutsideClick);
+  },
   watch: {
     "selections.ingredienti": "applyFilters",
     "selections.categorie": "applyFilters",
+    "selections.attivo": "applyFilters",
     priceRange: {
       handler: "applyFilters",
       deep: true,
@@ -234,7 +306,7 @@ export default {
 .filtri-btn {
   position: absolute;
   top: 40px;
-  right: 10px;
+  right: -10px; 
   background: var(--poldo-primary);
   color: white;
   border: none;
@@ -242,7 +314,9 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
+  font-size: 17px;
+  padding: 5px;
+  width: 70px;
   cursor: pointer;
   z-index: 30;
   transform: rotate(90deg);
@@ -251,12 +325,16 @@ export default {
 
 .sidebar.open .filtri-btn {
   transform: rotate(0deg);
+  top: 20px;
+  right: 10px; 
+  width: 30px;
+  height: 30px;
 }
 
 /* Price Inputs */
 .price-inputs {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 10px;
 }
 
@@ -265,10 +343,10 @@ export default {
 }
 
 .price-inputs input {
-  width: 30px;
+  width: 50px;
   padding: 5px;
-  border: 1px solid var(--color-border);
   border-radius: 4px;
+  margin: 0 5px;
 }
 
 /* Checkbox and Radio Groups */

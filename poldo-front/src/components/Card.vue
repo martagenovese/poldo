@@ -26,10 +26,9 @@ defineProps<{
   border-radius: 8px;
   margin-top: 20px;
   transition: all 0.3s;
-  
-  /* Use our theme variables */
   background: var(--card-bg);
   color: var(--card-text);
   box-shadow: 0 2px 8px var(--card-shadow);
+  border-radius: 20px;
 }
 </style>

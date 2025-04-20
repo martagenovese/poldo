@@ -10,7 +10,7 @@ defineProps<{
 </script>
 
 <template>
-  <Card width="200px" height="250px">
+  <Card width="240px" height="270px">
     <div class="card-prodotto">
       <img :src="imageSrc" :alt="imageAlt" />
 
