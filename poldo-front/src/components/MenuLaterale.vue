@@ -71,10 +71,10 @@ const clickPage = (pageId: number): void => {
   color: var(--menu-text);
   cursor: pointer;
   transition: opacity 0.3s ease;
-}
+  }
 
 .menu-laterale > span:hover {
-  opacity: 0.7;
+    opacity: 0.7;
 }
 
 .hidden {

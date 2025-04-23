@@ -180,7 +180,8 @@ const navigate = (path: string, requiresTurno: boolean) => {
 }
 
 .dropdown-menu a:hover {
-    background-color: var(--poldo-background-soft);
+    background-color: var(--poldo-accent);
+    color: var(--poldo-text);
 }
 
 .navbar>img {

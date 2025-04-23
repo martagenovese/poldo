@@ -22,6 +22,6 @@ defineProps<{
   display: grid;
   width: 100%;
   margin-top: 10px;
-  justify-items: center; /* Centers the cards horizontally in their grid cells */
+  justify-items: center; 
 }
 </style>

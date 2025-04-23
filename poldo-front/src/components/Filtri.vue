@@ -242,7 +242,7 @@ export default {
   top: 100px; /* Positioned under the Navbar */
   left: 0;
   width: 40%;
-  height: calc(100% - 110px); /* Adjust height to stay under the Navbar */
+  height: calc(95% - 110px); /* Adjust height to stay under the Navbar */
   background: var(--color-background-soft);
   box-shadow: 5px 0 5px var(--poldo-card-shadow);
   z-index: 20;
