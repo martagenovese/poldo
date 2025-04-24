@@ -18,12 +18,12 @@ const selectTurno = () => {
 </script>
 
 <template>
-    <Card class="turno-card" :class="{ 'selected': isSelected, 'not-selected': isOtherSelected }">
+    <Card class="turno-card" :class="{ 'selected': isSelected, 'not-selected': isOtherSelected }" @click="selectTurno">
         <div class="turno-content">
             <h2>{{ title }}</h2>
             <p>Ordina tra le {{ timeRangeOrder }}</p>
             <p>Ritira tra le {{ timeRangeTake }}</p>
-            <button class="ordina-btn" @click="selectTurno">Ordina</button>
+            <button class="ordina-btn">Ordina</button>
         </div>
     </Card>
 </template>
