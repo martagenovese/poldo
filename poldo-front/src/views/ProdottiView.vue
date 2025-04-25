@@ -18,15 +18,12 @@ const goToCart = () => {
 
 <template>
     <div class="prodotti">
-        <div class="content-container">
-            <!-- <h1>Prodotti</h1> -->
-            <div class="prodotti-container">
-                <CardGrid>
-                    <CardProdotto v-for="product in productsStore.products" :key="product.id" :productId="product.id"
-                        :title="product.title" :description="product.description" :ingredients="product.ingredients"
-                        :imageSrc="product.imageSrc" :price="product.price" />
-                </CardGrid>
-            </div>
+        <div class="prodotti-container">
+            <CardGrid>
+                <CardProdotto v-for="product in productsStore.products" :key="product.id" :productId="product.id"
+                    :title="product.title" :description="product.description" :ingredients="product.ingredients"
+                    :imageSrc="product.imageSrc" :price="product.price" />
+            </CardGrid>
         </div>
 
         <Filtri />
@@ -45,38 +42,34 @@ const goToCart = () => {
 
 <style scoped>
 .prodotti {
-    padding: 20px;
     position: relative;
     height: calc(100vh - 100px);
-    /* padding-bottom: 40px; */
-}
-
-.content-container {
-    margin-left: 12%;
-    /* Add margin to account for the partially visible sidebar */
-    width: 88%;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    overflow: hidden;
 }
 
 h1 {
     text-align: center;
     width: 100%;
+    margin-bottom: 20px;
 }
 
 .prodotti-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    height: 100%;
-    width: 100%;
+    width: calc(100% - 20px);
+    height: calc(100vh - 220px);    
+    overflow-y: auto;
+    margin: 20px 0 20px 20px;
+    padding-left: 20px;
 }
 
 .cart-button {
     position: fixed;
-    bottom: 30px;
-    right: 30px;
+    bottom: 10px;
+    right: 10px;
     width: 60px;
     height: 60px;
     border-radius: 50%;

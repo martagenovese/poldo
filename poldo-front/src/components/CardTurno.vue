@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import Card from './Card.vue'
-import { defineProps, defineEmits } from 'vue'
 
 const props = defineProps<{
     title: string

@@ -8,6 +8,31 @@
   font-weight: normal;
 }
 
+/* Custom scrollbar styling for the entire application */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--poldo-background-soft, #f1f1f1);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--poldo-accent, #888);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--poldo-primary, #555);
+}
+
+/* Firefox scrollbar styling */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--poldo-accent) var(--poldo-background-soft);
+}
+
 #app {
     display: flex;
     flex-direction: column;

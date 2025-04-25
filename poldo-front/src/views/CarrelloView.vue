@@ -34,7 +34,6 @@ const clearCart = () => {
     </div>
     
     <div v-else class="cart-content">
-        <h2>Prodotti</h2>
         <div class="cart-items-list">
           <CardProdotto 
             v-for="item in cartStore.items" 
@@ -85,7 +84,11 @@ const clearCart = () => {
 
 <style scoped>
 .carrello {
-  padding: 1.5rem;
+  height: calc(100vh - 100px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; 
+  padding: 20px;
 }
 
 h1, h2 {
@@ -110,9 +113,12 @@ h1, h2 {
 }
 
 .cart-content {
-  grid-template-columns: 1fr 300px;
+  display: flex;
+  flex-direction: column;
   gap: 30px;
-  margin-top: 20px;
+  overflow-y: auto;
+  padding: 0 20px;
+  margin-bottom: 40px;
 }
 
 .cart-items {
@@ -128,6 +134,7 @@ h1, h2 {
   align-items: center;
   gap: 20px;
   padding: 10px 0;
+  width: 100%;
 }
 
 .cart-summary {
@@ -135,8 +142,8 @@ h1, h2 {
   padding: 20px;
   border-radius: 10px;
   box-shadow: 0 2px 8px var(--card-shadow);
-  position: sticky;
-  top: 20px;
+  position: relative; 
+  top: auto; 
   height: fit-content;
 }
 
@@ -147,7 +154,7 @@ h1, h2 {
 }
 
 .summary-content {
-  margin-bottom: 20px;
+  overflow-y: auto; 
 }
 
 .summary-item {
@@ -270,17 +277,6 @@ h1, h2 {
   font-weight: bold;
   font-size: 1.1rem;
   color: var(--poldo-primary);
-}
-
-/* Responsive layout for smaller screens */
-@media (max-width: 768px) {
-  .cart-content {
-    grid-template-columns: 1fr;
-  }
-  
-  .cart-summary {
-    position: static;
-    margin-top: 20px;
-  }
+  margin-bottom: 10px;
 }
 </style>
