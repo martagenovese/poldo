@@ -84,7 +84,6 @@ const ordina = () => {
 
 .turno-card.not-selected {
     opacity: 0.4;
-    /* Increased transparency */
     filter: grayscale(40%);
     transform: scale(0.95);
 }

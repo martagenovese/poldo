@@ -28,7 +28,6 @@ const pageTitle = computed(() => {
     if (routeName === 'home') return 'Home';
     if (routeName === 'prodotti') return 'Prodotti';
     if (routeName === 'carrello') return 'Carrello';
-    if (routeName === 'about') return 'About';
 
     return 'Home'; // Default fallback
 })
@@ -192,21 +191,5 @@ const navigate = (path: string, requiresTurno: boolean) => {
 .turno-subtitle {
     font-size: 0.75rem;
     opacity: 0.9;
-    margin-top: 0px;
-}
-
-.poldo-text {
-    display: none;
-    /* Hide the old Poldo text */
-}
-
-.titolo-pagina {
-    display: none;
-    /* Hide the old page title */
-}
-
-.turno-indicator {
-    display: none;
-    /* Hide the old turno indicator */
 }
 </style>

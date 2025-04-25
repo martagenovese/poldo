@@ -74,7 +74,7 @@ h1 {
     height: 60px;
     border-radius: 50%;
     background-color: var(--poldo-primary);
-    color: var(--poldo-text);
+    color: white;
     display: flex;
     align-items: center;
     justify-content: center;

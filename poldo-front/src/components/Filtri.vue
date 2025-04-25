@@ -238,127 +238,135 @@ export default {
 <style scoped>
 
 .sidebar {
-  position: fixed;
-  top: 100px; /* Positioned under the Navbar */
-  left: 0;
-  width: 40%;
-  height: calc(95% - 110px); /* Adjust height to stay under the Navbar */
-  background: var(--color-background-soft);
-  box-shadow: 5px 0 5px var(--poldo-card-shadow);
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  border-radius: 0 10px 10px 0;
-  transition: transform 0.3s ease;
-  transform: translateX(-70%); /* Hide most of the sidebar by default */
-  border-radius: 0 20px 20px 0;
+    position: fixed;
+    top: 100px; 
+    left: 0;
+    width: 40%;
+    height: calc(95% - 110px); /* Adjust height to stay under the Navbar */
+    background: var(--color-background-soft);
+    box-shadow: 5px 0 5px var(--poldo-card-shadow);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease;
+    transform: translateX(-70%); /* Hide most of the sidebar by default */
+    border-radius: 0 20px 20px 0;
+    overflow: hidden; 
 }
 
 .sidebar.open {
-  transform: translateX(0); 
+    transform: translateX(0); 
 }
 
 .sidebar-content {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 100%;
-  overflow-y: auto;
-  height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    overflow-y: auto;
+    height: 100%;
+    margin: 20px 5px 20px 5px;
+    padding: 0 15px 0 15px; 
+    direction: rtl; /* This moves the scrollbar to the left */
+}
+
+/* This container reverses the direction back to normal for all child elements */
+.sidebar-content > * {
+    direction: ltr;
 }
 
 .sidebar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .filter-section {
-  border-bottom: 1px solid var(--color-border); 
-  padding-bottom: 10px;
+    border-bottom: 1px solid var(--color-border); 
+    padding-bottom: 10px;
+    width: 100%;
 }
 
 .sidebar-actions {
-  margin-top: auto;
-  display: flex;
-  justify-content: space-between;
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
 }
 
 .apply-btn,
 .reset-btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
 }
 
 .apply-btn {
-  background-color: var(--poldo-accent); 
-  color: var(--poldo-text); 
+    background-color: var(--poldo-accent); 
+    color: var(--poldo-text); 
 }
 
 .reset-btn {
-  background-color: var(--red); 
-  color: var(--poldo-text); 
+    background-color: var(--red); 
+    color: var(--poldo-text); 
 }
 
 .filtri-btn {
-  position: absolute;
-  top: 40px;
-  right: -10px; 
-  background: var(--poldo-primary);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 17px;
-  padding: 5px;
-  width: 70px;
-  cursor: pointer;
-  z-index: 30;
-  transform: rotate(90deg);
-  transition: transform 0.3s ease;
+    position: absolute;
+    top: 40px;
+    right: -10px; 
+    background: var(--poldo-primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    padding: 5px;
+    width: 70px;
+    cursor: pointer;
+    z-index: 30;
+    transform: rotate(90deg);
+    transition: transform 0.3s ease;
 }
 
 .sidebar.open .filtri-btn {
-  transform: rotate(0deg);
-  top: 20px;
-  right: 10px; 
-  width: 30px;
-  height: 30px;
+    transform: rotate(0deg);
+    top: 20px;
+    right: 10px; 
+    width: 30px;
+    height: 30px;
 }
 
 /* Price Inputs */
 .price-inputs {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .price-inputs label {
-  font-weight: bold;
+    font-weight: bold;
 }
 
 .price-inputs input {
-  width: 50px;
-  padding: 5px;
-  border-radius: 4px;
-  margin: 0 5px;
+    width: 50px;
+    padding: 5px;
+    border-radius: 4px;
+    margin: 0 5px;
 }
 
 /* Checkbox and Radio Groups */
 .checkbox-group, .radio-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .item-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 </style>

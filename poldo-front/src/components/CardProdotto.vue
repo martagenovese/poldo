@@ -153,13 +153,8 @@ const handleTouchMove = (event: TouchEvent) => {
     height: 270px;
     perspective: 1000px;
     cursor: pointer;
-    /* padding: 10px; */
-    -webkit-tap-highlight-color: transparent;
-    /* Removes tap highlight on mobile */
     outline: none;
-    /* Removes the outline on click */
     user-select: none;
-    /* Prevents text selection */
 }
 
 .card-wrapper {
@@ -219,7 +214,6 @@ const handleTouchMove = (event: TouchEvent) => {
     flex-direction: column;
     align-items: center;
     padding: 16px;
-    box-sizing: border-box;
     position: relative;
 }
 
@@ -286,16 +280,6 @@ const handleTouchMove = (event: TouchEvent) => {
 /* Custom scrollbar styling */
 .details::-webkit-scrollbar {
     width: 5px;
-}
-
-.details::-webkit-scrollbar-track {
-    background: var(--poldo-background-soft);
-    border-radius: 10px;
-}
-
-.details::-webkit-scrollbar-thumb {
-    background: var(--poldo-accent);
-    border-radius: 10px;
 }
 
 .description-section,

@@ -2,7 +2,6 @@
 import { defineProps, reactive } from 'vue';
 import type { PropType } from 'vue';
 
-
 interface Page {
     id: number;
     name: string;
