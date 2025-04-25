@@ -105,6 +105,7 @@ export const useCartStore = defineStore('cart', () => {
   }
   
   return { 
+    itemsByTurno, // Export itemsByTurno so it can be persisted
     items, 
     totalItems, 
     totalUniqueItems,
@@ -116,5 +117,7 @@ export const useCartStore = defineStore('cart', () => {
     clearAllCarts
   }
 }, {
-  persist: true,
+  persist: {
+    paths: ['itemsByTurno'] // Explicitly specify which state to persist
+  }
 })
