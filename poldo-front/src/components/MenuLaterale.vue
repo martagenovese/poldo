@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { defineProps, PropType, reactive } from 'vue';
+import { defineProps, reactive } from 'vue';
+import type { PropType } from 'vue';
+
 
 interface Page {
     id: number;
