@@ -11,6 +11,7 @@ const props = defineProps<{
     productId?: number
     inCartView?: boolean
     price?: number
+    disableFlip?: boolean
 }>()
 
 // Generate a random ID if not provided
@@ -59,6 +60,9 @@ const removeFromCart = () => {
 }
 
 const flipCard = (event: Event) => {
+    // Don't flip if disableFlip is true
+    if (props.disableFlip) return
+    
     // Only prevent flip when clicking on quantity controls
     if (!(event.target as HTMLElement).closest('.quantity-controls')) {
         isFlipped.value = !isFlipped.value
@@ -219,8 +223,8 @@ const handleTouchMove = (event: TouchEvent) => {
 
 .card-prodotto>img{
     border-radius: 15px;
-    height: 100px;
-    width: 100px;
+    height: 70px;  /* Reduced from 100px */
+    width: 70px;   /* Reduced from 100px */
 }
 
 
