@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { useTurnoStore } from './turno'
 
 // Define the cart item type
 export interface CartItem {
@@ -12,9 +13,25 @@ export interface CartItem {
   price: number
 }
 
+// Interface for the cart structure by turno
+interface CartByTurno {
+  [turno: string]: CartItem[]
+}
+
 export const useCartStore = defineStore('cart', () => {
-  // State
-  const items = ref<CartItem[]>([])
+  const itemsByTurno = ref<CartByTurno>({
+    primo: [],
+    secondo: []
+  })
+  
+  
+  const turnoStore = useTurnoStore()
+  
+  // Get the current cart items based on selected turno
+  const items = computed(() => {
+    const turno = turnoStore.turnoSelezionato || 'primo'
+    return itemsByTurno.value[turno] || []
+  })
   
   // Getters
   const totalItems = computed(() => {
@@ -31,15 +48,20 @@ export const useCartStore = defineStore('cart', () => {
   
   // Actions
   function addToCart(product: Omit<CartItem, 'quantity'>, quantity: number) {
-    // Check if the product already exists in the cart
-    const existingItem = items.value.find(item => item.id === product.id)
+    const turno = turnoStore.turnoSelezionato || 'primo'
+    
+    // Ensure the turno exists in the map
+    if (!itemsByTurno.value[turno]) {
+      itemsByTurno.value[turno] = []
+    }
+    
+    // Check if the product already exists in the current turno's cart
+    const existingItem = itemsByTurno.value[turno].find(item => item.id === product.id)
     
     if (existingItem) {
-      // Update the quantity
       existingItem.quantity += quantity
     } else {
-      // Add new item
-      items.value.push({
+      itemsByTurno.value[turno].push({
         ...product,
         quantity
       })
@@ -47,18 +69,39 @@ export const useCartStore = defineStore('cart', () => {
   }
   
   function updateQuantity(productId: number, quantity: number) {
-    const item = items.value.find(item => item.id === productId)
+    const turno = turnoStore.turnoSelezionato || 'primo'
+    
+    if (!itemsByTurno.value[turno]) {
+      return
+    }
+    
+    const item = itemsByTurno.value[turno].find(item => item.id === productId)
     if (item) {
       item.quantity = quantity
     }
   }
   
   function removeFromCart(productId: number) {
-    items.value = items.value.filter(item => item.id !== productId)
+    const turno = turnoStore.turnoSelezionato || 'primo'
+    
+    if (!itemsByTurno.value[turno]) {
+      return
+    }
+    
+    itemsByTurno.value[turno] = itemsByTurno.value[turno].filter(item => item.id !== productId)
   }
   
   function clearCart() {
-    items.value = []
+    const turno = turnoStore.turnoSelezionato || 'primo'
+    itemsByTurno.value[turno] = []
+  }
+  
+  // Clear all carts across all turni
+  function clearAllCarts() {
+    itemsByTurno.value = {
+      primo: [],
+      secondo: []
+    }
   }
   
   return { 
@@ -69,7 +112,8 @@ export const useCartStore = defineStore('cart', () => {
     addToCart, 
     updateQuantity, 
     removeFromCart, 
-    clearCart 
+    clearCart,
+    clearAllCarts
   }
 }, {
   persist: true,
