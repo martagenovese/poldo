@@ -1,6 +1,23 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { useCartStore } from '@/stores/cart'
+import { useFavoritesStore } from '@/stores/favorites'
+
+const favoritesStore = useFavoritesStore()
+const isFavorited = ref(false)
+
+onMounted(() => {
+    isFavorited.value = favoritesStore.isFavorite(id.value)
+})
+
+const toggleFavorite = () => {
+    isFavorited.value = !isFavorited.value
+    if (isFavorited.value) {
+        favoritesStore.addFavorite(id.value)
+    } else {
+        favoritesStore.removeFavorite(id.value)
+    }
+}
 
 const props = defineProps<{
     imageSrc: string
@@ -62,7 +79,7 @@ const removeFromCart = () => {
 const flipCard = (event: Event) => {
     // Don't flip if disableFlip is true
     if (props.disableFlip) return
-    
+
     // Only prevent flip when clicking on quantity controls
     if (!(event.target as HTMLElement).closest('.quantity-controls')) {
         isFlipped.value = !isFlipped.value
@@ -92,6 +109,19 @@ const handleTouchMove = (event: TouchEvent) => {
             <!-- Front Side -->
             <div class="card-side card-front">
                 <div class="card-prodotto">
+                    <button class="favorite-btn" @click.stop="toggleFavorite">
+                        <svg v-if="isFavorited" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                            viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5">
+                            <path
+                                d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                        </svg>
+                        <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path
+                                d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                        </svg>
+                    </button>
+
                     <img :src="imageSrc" :alt="imageAlt" />
 
                     <div class="info">
@@ -122,7 +152,7 @@ const handleTouchMove = (event: TouchEvent) => {
                 <div class="card-prodotto">
                     <h3 class="title">{{ title }}</h3>
                     <div class="descr">
-                        
+
                         <!-- <div v-if="price !== undefined" class="price">€{{ price.toFixed(2) }}</div> -->
 
                         <div class="details" @wheel.stop="handleScroll" @touchstart="handleTouchStart"
@@ -141,9 +171,9 @@ const handleTouchMove = (event: TouchEvent) => {
                                 </ul>
                                 <p v-else>Nessun ingrediente disponibile</p>
                             </div>
-                        </div> 
+                        </div>
                     </div>
-                    
+
                 </div>
             </div>
         </div>
@@ -221,10 +251,10 @@ const handleTouchMove = (event: TouchEvent) => {
     position: relative;
 }
 
-.card-prodotto>img{
+.card-prodotto>img {
     border-radius: 15px;
-    height: 70px;  /* Reduced from 100px */
-    width: 70px;   /* Reduced from 100px */
+    height: 100px;
+    width: 100px;
 }
 
 
@@ -254,7 +284,7 @@ const handleTouchMove = (event: TouchEvent) => {
     margin-top: 5px;
 }
 
-.descr{
+.descr {
     overflow-y: auto;
 }
 
@@ -379,6 +409,29 @@ const handleTouchMove = (event: TouchEvent) => {
     font-weight: bold;
     min-width: 20px;
     text-align: center;
+}
+
+.favorite-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    z-index: 2;
+    color: var(--poldo-accent);
+    transition: all 0.2s ease;
+}
+
+.favorite-btn:hover {
+    transform: scale(1.1);
+    color: var(--poldo-primary);
+}
+
+.favorite-btn svg {
+    width: 24px;
+    height: 24px;
 }
 
 @media (prefers-color-scheme: dark) {
