@@ -60,7 +60,7 @@ h1 {
     flex-direction: column;
     align-items: center;
     width: calc(100% - 20px);
-    height: calc(100vh - 220px);    
+    height: calc(100vh - 20px);    
     overflow-y: auto;
     margin: 20px 0 20px 20px;
     padding-left: 20px;
