@@ -125,7 +125,7 @@ h1, h2 {
 
 .cart-items-list {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(1, 1fr);
   gap: 10px;
   justify-items: center;
   padding: 10px 0;
@@ -313,7 +313,7 @@ h1, h2 {
 /* Responsive layout for small screens */
 @media (max-width: 600px) {
   .cart-items-list {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(1, 1fr);
     gap: 8px;
   }
   

@@ -3,6 +3,8 @@ import HomeView from '../views/HomeView.vue'
 import ProdottiView from '../views/ProdottiView.vue'
 import CarrelloView from '../views/CarrelloView.vue'
 import { useTurnoStore } from '../stores/turno'
+import NewProdottiView from '../views/bar/NewProdottiView.vue'
+import ModificaView from '../views/bar/ModificaView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -24,6 +26,16 @@ const router = createRouter({
       component: CarrelloView,
       meta: { requiresTurno: true }
     },
+    {
+        path: '/inserisciprodotto',
+      name: 'inserisciProdotto',
+      component: NewProdottiView,
+    },
+    {
+      path: '/modifica',
+      name: 'modifica',
+      component: ModificaView,
+    }
   ],
 })
 

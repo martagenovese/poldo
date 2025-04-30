@@ -2,7 +2,6 @@
 import CardGrid from '@/components/CardGrid.vue';
 import CardProdotto from '@/components/CardProdotto.vue';
 import Filtri from '@/components/Filtri.vue';
-import SearchBar from '@/components/SearchBar.vue';
 import { useRouter } from 'vue-router';
 import { useProductsStore } from '@/stores/products';
 import { useCartStore } from '@/stores/cart';
@@ -20,7 +19,7 @@ const goToCart = () => {
 <template>
     <div class="prodotti">
         <div class="prodotti-container">
-            <CardGrid minWidth="300px">
+            <CardGrid>
                 <CardProdotto v-for="product in productsStore.products" :key="product.id" :productId="product.id"
                     :title="product.title" :description="product.description" :ingredients="product.ingredients"
                     :imageSrc="product.imageSrc" :price="product.price" />
@@ -64,8 +63,7 @@ h1 {
     height: calc(100vh - 20px);    
     overflow-y: auto;
     margin: 20px 0 20px 20px;
-    /* padding: 0 0 0 20px; */
-    padding: 0 20px 0 30px;
+    padding: 0 0 0 020px;
 }
 
 .cart-button {

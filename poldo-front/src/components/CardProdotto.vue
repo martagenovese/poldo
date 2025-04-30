@@ -149,8 +149,8 @@ const handleTouchMove = (event: TouchEvent) => {
 
             <!-- Back Side -->
             <div class="card-side card-back">
-                <div class="card-prodotto">
-                    <h3 class="title">{{ title }}</h3>
+                <h3 class="title">{{ title }}</h3>
+                <div class="scroll">
                     <div class="descr">
 
                         <!-- <div v-if="price !== undefined" class="price">€{{ price.toFixed(2) }}</div> -->
@@ -183,9 +183,10 @@ const handleTouchMove = (event: TouchEvent) => {
 <style scoped>
 /* Card flip container */
 .card-container {
-    width: 240px;
-    height: 270px;
-    perspective: 1000px;
+    width: 100%;
+    max-width: 400px;
+    height: 175px;
+    /* perspective: 1000px; */
     cursor: pointer;
     outline: none;
     user-select: none;
@@ -203,7 +204,7 @@ const handleTouchMove = (event: TouchEvent) => {
     transform: rotateY(180deg);
 }
 
-.card-side {
+.card-front {
     position: absolute;
     width: 100%;
     height: 100%;
@@ -213,31 +214,35 @@ const handleTouchMove = (event: TouchEvent) => {
     border-radius: 20px;
     background-color: var(--card-bg);
     box-shadow: 0 2px 8px var(--card-shadow);
-}
-
-.card-front {
     z-index: 1;
 }
 
 .card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    /* Safari support */
+    border-radius: 20px;
+    background-color: var(--card-bg);
+    box-shadow: 0 2px 8px var(--card-shadow);
     transform: rotateY(180deg);
     pointer-events: none;
-    /* Disable pointer events on the back card container */
+    /* overflow-y: auto; */
+    overflow: hidden;
 }
 
 
 
-/* This is important - enable pointer events when flipped */
 .card-wrapper.is-flipped .card-back {
     pointer-events: auto;
-    /* Re-enable pointer events when card is flipped */
 }
 
 .card-back .card-prodotto,
 .card-back .details,
 .card-back .quantity-controls {
     pointer-events: auto;
-    /* Enable pointer events for all content on back */
 }
 
 /* Card content */
@@ -245,7 +250,7 @@ const handleTouchMove = (event: TouchEvent) => {
     width: 100%;
     height: 100%;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     padding: 16px;
     position: relative;
@@ -261,13 +266,11 @@ const handleTouchMove = (event: TouchEvent) => {
 .info {
     text-align: center;
     width: 100%;
-    margin-bottom: 30px;
 }
 
 .title {
     font-size: 1.2rem;
     margin: 0;
-    margin-bottom: 8px;
     color: var(--poldo-primary);
     font-weight: bold;
 }
@@ -281,12 +284,14 @@ const handleTouchMove = (event: TouchEvent) => {
 .price {
     font-size: 1.1rem;
     color: var(--poldo-text);
-    margin-top: 5px;
 }
 
-.descr {
+.descr{
     overflow-y: auto;
+    width: 100%;
+    height: 100%;
 }
+
 
 /* Back side specific styles */
 .details {

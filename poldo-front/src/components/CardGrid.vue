@@ -1,14 +1,15 @@
 <script setup lang="ts">
 defineProps<{
-    columns?: number
+    minWidth?: string
     gap?: string
 }>()
 </script>
 
 <template>
     <div class="card-grid" :style="{
-        'grid-template-columns': `repeat(${columns || 1}, 1fr)`,
-        'gap': gap || '20px'}">
+        'grid-template-columns': `repeat(auto-fit, minmax(${minWidth || '300px'}, 1fr))`,
+        'gap': gap || '20px'
+    }">
         <slot></slot>
     </div>
 </template>

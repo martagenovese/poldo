@@ -45,10 +45,34 @@ export const useProductsStore = defineStore('products', () => {
       ingredients: ['Pane al sesamo', 'Roast beef', 'Formaggio cheddar', 'Bacon croccante', 'Cipolla caramellata', 'Salsa barbecue'],
       imageSrc: "https://lh3.googleusercontent.com/a/ACg8ocLPv09a9-uNbEG-ZfRm5bWQUlyLOpBaKxHz88de_c6vB8RvQ_Plrg=s96-c",
       price: 7.50
-    }
+    },
+    {
+        id: 5,
+        title: "Panino deluxe",
+        description: "Il nostro panino più ricco: roast beef, formaggio cheddar, bacon croccante e salsa barbecue. Per chi non si accontenta.",
+        ingredients: ['Pane al sesamo', 'Roast beef', 'Formaggio cheddar', 'Bacon croccante', 'Cipolla caramellata', 'Salsa barbecue'],
+        imageSrc: "https://lh3.googleusercontent.com/a/ACg8ocLPv09a9-uNbEG-ZfRm5bWQUlyLOpBaKxHz88de_c6vB8RvQ_Plrg=s96-c",
+        price: 7.50
+      },
+      {
+        id: 6,
+        title: "Panino deluxe",
+        description: "Il nostro panino più ricco: roast beef, formaggio cheddar, bacon croccante e salsa barbecue. Per chi non si accontenta.",
+        ingredients: ['Pane al sesamo', 'Roast beef', 'Formaggio cheddar', 'Bacon croccante', 'Cipolla caramellata', 'Salsa barbecue'],
+        imageSrc: "https://lh3.googleusercontent.com/a/ACg8ocLPv09a9-uNbEG-ZfRm5bWQUlyLOpBaKxHz88de_c6vB8RvQ_Plrg=s96-c",
+        price: 7.50
+      }
   ])
 
-  return { products }
+  // Method to add a new product
+  function addProduct(newProduct: Product) {
+    // add id
+    newProduct.id = products.value.length + 1;
+    products.value.push(newProduct);
+  }
+
+  return { products, addProduct };
 }, {
   persist: true, // Enable localStorage persistence
 })
+
