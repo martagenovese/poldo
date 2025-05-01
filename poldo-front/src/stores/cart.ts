@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useTurnoStore } from './turno'
 
-// Define the cart item type
 export interface CartItem {
   id: number
   title: string
@@ -13,111 +12,69 @@ export interface CartItem {
   price: number
 }
 
-// Interface for the cart structure by turno
 interface CartByTurno {
   [turno: string]: CartItem[]
 }
 
 export const useCartStore = defineStore('cart', () => {
-  const itemsByTurno = ref<CartByTurno>({
-    primo: [],
-    secondo: []
-  })
-  
-  
   const turnoStore = useTurnoStore()
-  
-  // Get the current cart items based on selected turno
+  const itemsByTurno = ref<CartByTurno>({ primo: [], secondo: [] })
+
+  // Getter per gli elementi del carrello corrente
   const items = computed(() => {
-    const turno = turnoStore.turnoSelezionato || 'primo'
-    return itemsByTurno.value[turno] || []
+    const currentTurno = turnoStore.turnoSelezionato || 'primo'
+    return itemsByTurno.value[currentTurno] || []
   })
-  
-  // Getters
-  const totalItems = computed(() => {
-    return items.value.reduce((total, item) => total + item.quantity, 0)
-  })
-  
-  const totalUniqueItems = computed(() => {
-    return items.value.length
-  })
-  
-  const totalPrice = computed(() => {
-    return items.value.reduce((total, item) => total + (item.price * item.quantity), 0)
-  })
-  
-  // Actions
+
+  // Calcoli derivati
+  const totalItems = computed(() => items.value.reduce((acc, item) => acc + item.quantity, 0))
+  const totalUniqueItems = computed(() => items.value.length)
+  const totalPrice = computed(() => items.value.reduce((acc, item) => acc + (item.price * item.quantity), 0))
+
+  // Azioni principali
   function addToCart(product: Omit<CartItem, 'quantity'>, quantity: number) {
-    const turno = turnoStore.turnoSelezionato || 'primo'
-    
-    // Ensure the turno exists in the map
-    if (!itemsByTurno.value[turno]) {
-      itemsByTurno.value[turno] = []
-    }
-    
-    // Check if the product already exists in the current turno's cart
-    const existingItem = itemsByTurno.value[turno].find(item => item.id === product.id)
-    
-    if (existingItem) {
-      existingItem.quantity += quantity
-    } else {
-      itemsByTurno.value[turno].push({
-        ...product,
-        quantity
-      })
-    }
+    const currentTurno = turnoStore.turnoSelezionato || 'primo'
+    const cart = itemsByTurno.value[currentTurno]
+    const existingItem = cart.find(item => item.id === product.id)
+
+    existingItem
+      ? existingItem.quantity += quantity
+      : cart.push({ ...product, quantity })
   }
-  
+
   function updateQuantity(productId: number, quantity: number) {
-    const turno = turnoStore.turnoSelezionato || 'primo'
-    
-    if (!itemsByTurno.value[turno]) {
-      return
-    }
-    
-    const item = itemsByTurno.value[turno].find(item => item.id === productId)
-    if (item) {
-      item.quantity = quantity
-    }
+    const currentTurno = turnoStore.turnoSelezionato || 'primo'
+    const item = itemsByTurno.value[currentTurno].find(item => item.id === productId)
+    if (item) item.quantity = quantity
   }
-  
+
   function removeFromCart(productId: number) {
-    const turno = turnoStore.turnoSelezionato || 'primo'
-    
-    if (!itemsByTurno.value[turno]) {
-      return
-    }
-    
-    itemsByTurno.value[turno] = itemsByTurno.value[turno].filter(item => item.id !== productId)
+    const currentTurno = turnoStore.turnoSelezionato || 'primo'
+    itemsByTurno.value[currentTurno] = itemsByTurno.value[currentTurno].filter(item => item.id !== productId)
   }
-  
-  function clearCart() {
-    const turno = turnoStore.turnoSelezionato || 'primo'
-    itemsByTurno.value[turno] = []
+
+  // Funzioni di pulizia
+  const clearCart = () => {
+    const currentTurno = turnoStore.turnoSelezionato || 'primo'
+    itemsByTurno.value[currentTurno] = []
   }
-  
-  // Clear all carts across all turni
-  function clearAllCarts() {
-    itemsByTurno.value = {
-      primo: [],
-      secondo: []
-    }
+
+  const clearAllCarts = () => {
+    itemsByTurno.value = { primo: [], secondo: [] }
   }
-  
-  return { 
-    itemsByTurno, // Export itemsByTurno so it can be persisted
-    items, 
-    totalItems, 
+
+  return {
+    itemsByTurno,
+    items,
+    totalItems,
     totalUniqueItems,
     totalPrice,
-    addToCart, 
-    updateQuantity, 
-    removeFromCart, 
+    addToCart,
+    updateQuantity,
+    removeFromCart,
     clearCart,
     clearAllCarts
   }
 }, {
-  persist: {
-    paths: ['itemsByTurno'] // Explicitly specify which state to persist
-  }
+  persist: true
 })

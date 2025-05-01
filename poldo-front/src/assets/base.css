@@ -1,31 +1,23 @@
-/* Poldo App Colors - Light Theme */
 :root {
-  /* Poldo App Colors - Light Theme */
-  --poldo-primary: #EFC20C;
-  --poldo-background: #FFFBEF;
-  --poldo-background-soft: #FFF5DB;
-  --poldo-accent: #EFCE4A;
-  --poldo-text: #0D0B01;
-  --poldo-card-bg: #FFFBEF;
-  --poldo-card-shadow: rgba(13, 11, 1, 0.1);
-  --poldo-menu-bg: #FFF5DB;
-  --poldo-green: #4CAF50; 
-  --poldo-red: #F44336; 
+  --poldo-primary: #FFB347;
+  --poldo-background: #FFF8F0;
+  --poldo-background-soft: #FFEFD5;
+  --poldo-accent: #FFA726;
+  --poldo-text: #2A2200;
+  --poldo-card-bg: #FFEEDD;
+  --poldo-card-shadow: rgba(42, 34, 0, 0.1);
+  --poldo-menu-bg: #FFEFD5;
+  --poldo-green: #689F38;
+  --poldo-red: #D32F2F;
 
-  /* semantic color variables for this project */
   --color-background: var(--poldo-background);
   --color-background-soft: var(--poldo-background-soft);
   --color-background-mute: var(--poldo-background-soft);
-
-  --color-border: rgba(13, 11, 1, 0.12);
-  --color-border-hover: rgba(13, 11, 1, 0.29);
-
+  --color-border: rgba(42, 34, 0, 0.12);
+  --color-border-hover: rgba(42, 34, 0, 0.29);
   --color-heading: var(--poldo-text);
   --color-text: var(--poldo-text);
-
   --section-gap: 160px;
-
-  /* Poldo App Semantic Colors */
   --navbar-bg: var(--poldo-primary);
   --navbar-text: var(--poldo-text);
   --menu-bg: var(--poldo-menu-bg);
@@ -38,32 +30,29 @@
   --accent: var(--poldo-accent);
   --green: var(--poldo-green);
   --red: var(--poldo-red);
+  --disabled: rgba(42, 34, 0, 0.2);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Poldo App Dark Theme */
-    --poldo-primary: #d6ad08;
-    --poldo-background: #110D02;
-    --poldo-background-soft: #16120B;
-    --poldo-accent: #74600E;
-    --poldo-text: #D3D5D7;
-    --poldo-card-bg: #16120B;
-    --poldo-card-shadow: rgba(0, 0, 0, 0.3);
-    --poldo-menu-bg: #110D02;
-    --poldo-green: #227a25; 
-    --poldo-red: #a4180e; 
+    --poldo-primary: #FFA000;
+    --poldo-background: #000000;
+    --poldo-background-soft: #2A2200;
+    --poldo-accent: #FFC107;
+    --poldo-text: #EDE0D4;
+    --poldo-card-bg: #2A2200;
+    --poldo-card-shadow: rgba(0, 0, 0, 0.4);
+    --poldo-menu-bg: #1A1200;
+    --poldo-green: #558B2F;
+    --poldo-red: #B71C1C;
 
     --color-background: var(--poldo-background);
     --color-background-soft: var(--poldo-background-soft);
     --color-background-mute: var(--poldo-background-soft);
-
-    --color-border: rgba(84, 84, 84, 0.48);
-    --color-border-hover: rgba(84, 84, 84, 0.65);
-
+    --color-border: rgba(237, 224, 212, 0.2);
+    --color-border-hover: rgba(237, 224, 212, 0.4);
     --color-heading: var(--poldo-text);
     --color-text: var(--poldo-text);
-    
     --navbar-bg: var(--poldo-primary);
     --navbar-text: var(--poldo-background);
     --menu-bg: var(--poldo-menu-bg);
@@ -76,5 +65,6 @@
     --accent: var(--poldo-accent);
     --green: var(--poldo-green);
     --red: var(--poldo-red);
+    --disabled: rgba(42, 34, 0, 0.2);
   }
 }

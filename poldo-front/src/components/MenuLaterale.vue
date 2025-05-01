@@ -1,42 +1,20 @@
 <script setup lang="ts">
-import { defineProps, reactive } from 'vue';
-import type { PropType } from 'vue';
+import { defineProps } from 'vue'
 
-interface Page {
-    id: number;
-    name: string;
-    path: string;
-}
-
-const props = defineProps({
+defineProps<{
     pages: {
-        type: Array as PropType<Page[]>,
-        required: true
-    }
-});
+        id: number
+        name: string
+        path: string
+    }[]
+}>()
 
-const visibilityState = reactive<Record<number, boolean>>({});
-
-// Initialize visibility state for all pages
-props.pages.forEach(page => {
-    visibilityState[page.id] = true;
-});
-
-
-const clickPage = (pageId: number): void => {
-    const page = props.pages.find(p => p.id === pageId);
-    if (page) {
-        console.log(`Navigating to ${page.name}`);
-        window.location.href = page.path;
-    }
-};
-
+const navigate = (path: string) => window.location.href = path
 </script>
 
 <template>
     <div class="menu-laterale">
-        <span v-for="page in pages" :key="page.id" @click="clickPage(page.id)"
-            :class="{ 'hidden': !visibilityState[page.id] }">
+        <span v-for="page in pages" :key="page.id" @click="navigate(page.path)">
             {{ page.name }}
         </span>
     </div>

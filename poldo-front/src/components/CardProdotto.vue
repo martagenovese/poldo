@@ -3,22 +3,6 @@ import { ref, watch, onMounted } from 'vue'
 import { useCartStore } from '@/stores/cart'
 import { useFavoritesStore } from '@/stores/favorites'
 
-const favoritesStore = useFavoritesStore()
-const isFavorited = ref(false)
-
-onMounted(() => {
-    isFavorited.value = favoritesStore.isFavorite(id.value)
-})
-
-const toggleFavorite = () => {
-    isFavorited.value = !isFavorited.value
-    if (isFavorited.value) {
-        favoritesStore.addFavorite(id.value)
-    } else {
-        favoritesStore.removeFavorite(id.value)
-    }
-}
-
 const props = defineProps<{
     imageSrc: string
     imageAlt?: string
@@ -31,35 +15,33 @@ const props = defineProps<{
     disableFlip?: boolean
 }>()
 
-// Generate a random ID if not provided
-const id = ref(props.productId || Math.floor(Math.random() * 10000))
-const quantity = ref(0)
-const isFlipped = ref(false)
 const cartStore = useCartStore()
+const favoritesStore = useFavoritesStore()
+const isFlipped = ref(false)
+const isFavorited = ref(false)
+const quantity = ref(0)
 
-// Check if this product is already in the cart
+// Genera ID random se non fornito
+const id = ref(props.productId || Math.floor(Math.random() * 10000))
+
+// Inizializza preferiti
 onMounted(() => {
+    isFavorited.value = favoritesStore.isFavorite(id.value)
     const cartItem = cartStore.items.find(item => item.id === id.value)
-    if (cartItem) {
-        quantity.value = cartItem.quantity
-    }
+    quantity.value = cartItem?.quantity || 0
 })
 
-// Watch for quantity changes to update cart
-watch(quantity, (newValue) => {
-    if (newValue > 0) {
-        cartStore.addToCart({
-            id: id.value,
-            title: props.title,
-            description: props.description,
-            ingredients: props.ingredients,
-            imageSrc: props.imageSrc,
-            price: props.price || 0
-        }, newValue - (cartStore.items.find(item => item.id === id.value)?.quantity || 0))
-    } else if (newValue === 0) {
-        cartStore.removeFromCart(id.value)
-    }
-}, { immediate: false })
+// Gestione preferiti
+const toggleFavorite = () => {
+    isFavorited.value = !isFavorited.value
+    isFavorited.value
+        ? favoritesStore.addFavorite(id.value)
+        : favoritesStore.removeFavorite(id.value)
+}
+
+const increaseQuantity = () => {
+    quantity.value++
+}
 
 const decreaseQuantity = () => {
     if (quantity.value > 0) {
@@ -67,44 +49,37 @@ const decreaseQuantity = () => {
     }
 }
 
-const increaseQuantity = () => {
-    quantity.value++
-}
-
 const removeFromCart = () => {
-    cartStore.removeFromCart(id.value)
     quantity.value = 0
 }
 
-const flipCard = (event: Event) => {
-    // Don't flip if disableFlip is true
-    if (props.disableFlip) return
+// Aggiorna carrello quando cambia quantità
+watch(quantity, (newVal) => {
+    if (newVal > 0) {
+        cartStore.addToCart({
+            id: id.value,
+            title: props.title,
+            description: props.description,
+            ingredients: props.ingredients,
+            imageSrc: props.imageSrc,
+            price: props.price || 0
+        }, newVal - (cartStore.items.find(item => item.id === id.value)?.quantity || 0))
+    } else {
+        cartStore.removeFromCart(id.value)
+    }
+})
 
-    // Only prevent flip when clicking on quantity controls
+// Gestione flip card
+const flipCard = (event: Event) => {
+    if (props.disableFlip) return
     if (!(event.target as HTMLElement).closest('.quantity-controls')) {
         isFlipped.value = !isFlipped.value
     }
 }
-
-// Handle scrolling in the details section without propagating events
-const handleScroll = (event: Event) => {
-    event.stopPropagation()
-}
-
-// Handle touch events to prevent parent scrolling when scrolling the details
-const handleTouchStart = (event: TouchEvent) => {
-    // Don't stop propagation for touchstart to allow the touch to be registered
-    // This is important for detecting taps on the card
-}
-
-const handleTouchMove = (event: TouchEvent) => {
-    // Prevent the parent container from scrolling when scrolling inside details
-    event.stopPropagation()
-}
 </script>
 
 <template>
-    <div class="card-container" @click="flipCard">
+    <div class="card-container" :class="{ 'clickable': !props.disableFlip }" @click="flipCard">
         <div class="card-wrapper" :class="{ 'is-flipped': isFlipped }">
             <!-- Front Side -->
             <div class="card-side card-front">
@@ -181,15 +156,16 @@ const handleTouchMove = (event: TouchEvent) => {
 </template>
 
 <style scoped>
-/* Card flip container */
 .card-container {
     width: 100%;
     max-width: 400px;
     height: 175px;
-    /* perspective: 1000px; */
-    cursor: pointer;
     outline: none;
     user-select: none;
+}
+
+.card-container.clickable {
+    cursor: pointer;
 }
 
 .card-wrapper {
@@ -210,7 +186,6 @@ const handleTouchMove = (event: TouchEvent) => {
     height: 100%;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
-    /* Safari support */
     border-radius: 20px;
     background-color: var(--card-bg);
     box-shadow: 0 2px 8px var(--card-shadow);
@@ -223,17 +198,19 @@ const handleTouchMove = (event: TouchEvent) => {
     height: 100%;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
-    /* Safari support */
     border-radius: 20px;
     background-color: var(--card-bg);
     box-shadow: 0 2px 8px var(--card-shadow);
     transform: rotateY(180deg);
-    pointer-events: none;
-    /* overflow-y: auto; */
-    overflow: hidden;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
 }
 
-
+.scroll {
+    flex: 1;
+    min-height: 0;
+}
 
 .card-wrapper.is-flipped .card-back {
     pointer-events: auto;
@@ -273,6 +250,16 @@ const handleTouchMove = (event: TouchEvent) => {
     margin: 0;
     color: var(--poldo-primary);
     font-weight: bold;
+    text-align: center;
+}
+
+.card-back .title {
+    font-size: 1.5rem;
+    margin: 0;
+    background-color: var(--poldo-primary);
+    color: white;
+    width: 100%;
+    font-weight: bold;
 }
 
 .short-description {
@@ -286,34 +273,20 @@ const handleTouchMove = (event: TouchEvent) => {
     color: var(--poldo-text);
 }
 
-.descr{
+.descr {
     overflow-y: auto;
-    width: 100%;
     height: 100%;
+    box-sizing: border-box;
+    padding: 5px 10px;
 }
-
 
 /* Back side specific styles */
 .details {
-    width: 100%;
-    height: calc(100% - 80px);
+    height: auto;
     padding-right: 5px;
-    /* -webkit-overflow-scrolling: touch; */
-    /* Improved scrolling on iOS */
-    scrollbar-width: thin;
-    /* Firefox */
-    position: relative;
-    /* Establishes a new stacking context */
-    z-index: 100;
-    /* Higher than other elements to ensure it receives events */
-    touch-action: pan-y;
-    /* Allow only vertical touch scrolling */
-    overscroll-behavior: contain;
-    /* Prevent scroll chaining */
-    pointer-events: auto !important;
-    /* Force pointer events to be enabled */
-    will-change: transform;
-    /* Performance optimization for scrolling */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
 
 /* Custom scrollbar styling */
@@ -321,10 +294,6 @@ const handleTouchMove = (event: TouchEvent) => {
     width: 5px;
 }
 
-.description-section,
-.ingredients-section {
-    margin-bottom: 15px;
-}
 
 .ingredients-section ul {
     padding-left: 20px;
@@ -381,18 +350,13 @@ const handleTouchMove = (event: TouchEvent) => {
     background-color: var(--poldo-green);
 }
 
-.quantity-btn.plus:hover {
-    background-color: var(--green);
-    /* Slightly darker green on hover */
-}
-
 .quantity-btn.minus {
     background-color: var(--poldo-red);
 }
 
-.quantity-btn.minus:hover {
-    background-color: var(--red);
-    /* Slightly darker red on hover */
+.quantity-btn.minus.disabled {
+    background-color: var(--disabled);
+    cursor: not-allowed;
 }
 
 .quantity-btn.delete {
@@ -402,11 +366,6 @@ const handleTouchMove = (event: TouchEvent) => {
 
 .quantity-btn.delete:hover {
     background-color: var(--poldo-primary);
-}
-
-.quantity-btn.minus.disabled {
-    background-color: var(--poldo-accent);
-    cursor: not-allowed;
 }
 
 .quantity {

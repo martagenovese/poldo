@@ -11,15 +11,10 @@ const props = defineProps<{
 
 const emit = defineEmits(['select'])
 
-const selectTurno = () => {
-    emit('select')
-}
+const selectTurno = () => emit('select')
 
-const ordina = () => {
-    if(props.isSelected) {
-        console.log('Ordina clicked')
-        window.location.href = '/prodotti'
-    }
+const handleOrder = () => {
+    if(props.isSelected) window.location.href = '/prodotti'
 }
 </script>
 
@@ -29,7 +24,7 @@ const ordina = () => {
             <h2>{{ title }}</h2>
             <p>Ordina tra le {{ timeRangeOrder }}</p>
             <p>Ritira tra le {{ timeRangeTake }}</p>
-            <button class="ordina-btn" @click="ordina">Ordina</button>
+            <button class="ordina-btn" @click="handleOrder">Ordina</button>
         </div>
     </Card>
 </template>

@@ -33,7 +33,6 @@ const selezionaTurno = (turno: string) => {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    /* height: calc(100vh - 70px); */
     height: 100%;
     overflow-y: auto;
     box-sizing: border-box;
@@ -43,12 +42,9 @@ const selezionaTurno = (turno: string) => {
 .turni-container {
     display: flex;
     gap: 30px;
-    /* margin-top: 2vh; */
-    /* Use viewport-relative units */
     flex-wrap: wrap;
     justify-content: center;
     max-height: calc(100% - 10vh);
-    /* Leave some space for margins */
     width: 100%;
 }
 

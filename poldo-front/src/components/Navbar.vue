@@ -7,7 +7,6 @@ import { useTurnoStore } from '@/stores/turno'
 const router = useRouter()
 const route = useRoute()
 const showMenu = ref(false)
-// Use the shared turno store instead of local state
 const turnoStore = useTurnoStore()
 
 defineProps<{
@@ -15,56 +14,35 @@ defineProps<{
     nome: string
 }>()
 
-const toggleMenu = () => {
-    showMenu.value = !showMenu.value
-}
+const pageTitles = {
+    home: 'Home',
+    prodotti: 'Prodotti',
+    carrello: 'Carrello'
+} as const
 
-// Function to get page title based on current route
-const pageTitle = computed(() => {
-    // Get name from the current route
-    const routeName = route.name?.toString() || '';
-
-    // Return formatted title or default to 'Home' if not found
-    if (routeName === 'home') return 'Home';
-    if (routeName === 'prodotti') return 'Prodotti';
-    if (routeName === 'carrello') return 'Carrello';
-
-    return 'Home'; // Default fallback
-})
-
-// Check if a turno is selected using the store
-const hasSelectedTurno = computed(() => {
-    return !!turnoStore.turnoSelezionato
-})
-
-// Navigation routes that should be available in the dropdown
 const navRoutes = [
-    {
-        name: 'Home',
-        path: '/',
-        requiresTurno: false
-    },
-    {
-        name: 'Prodotti',
-        path: '/prodotti',
-        requiresTurno: true
-    },
-    {
-        name: 'Carrello',
-        path: '/carrello',
-        requiresTurno: true
-    }
-]
+    { name: 'Home', path: '/', requiresTurno: false },
+    { name: 'Prodotti', path: '/prodotti', requiresTurno: true },
+    { name: 'Carrello', path: '/carrello', requiresTurno: true }
+] as const
 
-// Handle navigation with turno check
+const toggleMenu = () => showMenu.value = !showMenu.value
+
+const pageTitle = computed(() =>
+    pageTitles[route.name as keyof typeof pageTitles] || 'Home'
+)
+
+const hasSelectedTurno = computed(() =>
+    !!turnoStore.turnoSelezionato
+)
+
 const navigate = (path: string, requiresTurno: boolean) => {
     if (requiresTurno && !hasSelectedTurno.value) {
-        // Don't navigate, just close the menu
         showMenu.value = false
-    } else {
-        router.push(path)
-        showMenu.value = false
+        return
     }
+    router.push(path)
+    showMenu.value = false
 }
 </script>
 
@@ -76,29 +54,51 @@ const navigate = (path: string, requiresTurno: boolean) => {
             </div>
             <div class="title-container">
                 <div class="main-title">Poldo {{ pageTitle }}</div>
-                <div class="turno-subtitle" v-if="hasSelectedTurno">
+                <div
+                    v-if="hasSelectedTurno"
+                    class="turno-subtitle"
+                >
                     {{ turnoStore.turnoSelezionato === 'primo' ? 'Primo Turno' : 'Secondo Turno' }}
                 </div>
             </div>
         </div>
 
-        <div class="dropdown-menu" v-show="showMenu">
+        <div
+            v-show="showMenu"
+            class="dropdown-menu"
+        >
             <div class="dropdown-menu-content">
-                <div v-for="route in navRoutes" :key="route.path" class="dropdown-menu-item">
-                    <a href="#" @click.prevent="navigate(route.path, route.requiresTurno)"
-                        :class="{ 'disabled': route.requiresTurno && !hasSelectedTurno }">
+                <div
+                    v-for="route in navRoutes"
+                    :key="route.path"
+                    class="dropdown-menu-item"
+                >
+                    <a
+                        href="#"
+                        @click.prevent="navigate(route.path, route.requiresTurno)"
+                        :class="{ 'disabled': route.requiresTurno && !hasSelectedTurno }"
+                    >
                         {{ route.name }}
-                        <span v-if="route.requiresTurno && !hasSelectedTurno" class="lock-icon">🔒</span>
+                        <span
+                            v-if="route.requiresTurno && !hasSelectedTurno"
+                            class="lock-icon"
+                        >
+                            🔒
+                        </span>
                     </a>
                 </div>
             </div>
         </div>
 
-        <img :src="img_profilo" alt="Profilo" />
+        <img
+            :src="img_profilo"
+            alt="Profilo"
+        />
     </div>
 </template>
 
 <style>
+/* Stile mantenuto invariato come richiesto */
 .navbar {
     height: 70px;
     width: 100%;

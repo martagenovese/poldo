@@ -1,8 +1,8 @@
 <script setup lang="ts">
 defineProps<{
-    minWidth?: string
-    gap?: string
-}>()
+    minWidth?: string;
+    gap?: string;
+}>();
 </script>
 
 <template>

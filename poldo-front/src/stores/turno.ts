@@ -2,17 +2,16 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 export const useTurnoStore = defineStore('turno', () => {
-  const turnoSelezionato = ref('')
-  
-  // Function to update turno selection
-  function selectTurno(turno: string) {
-    turnoSelezionato.value = turno
+  const selectedTurno = ref<string>('')
+
+  const selectTurno = (turno: string) => {
+    selectedTurno.value = turno
   }
-  
+
   return {
-    turnoSelezionato,
+    turnoSelezionato: selectedTurno,
     selectTurno
   }
 }, {
-  persist: true,
+  persist: true
 })
