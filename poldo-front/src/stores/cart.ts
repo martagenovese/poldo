@@ -4,12 +4,7 @@ import { useTurnoStore } from './turno'
 
 export interface CartItem {
   id: number
-  title: string
-  description?: string
-  ingredients?: string[]
-  imageSrc: string
   quantity: number
-  price: number
 }
 
 interface CartByTurno {
@@ -20,56 +15,37 @@ export const useCartStore = defineStore('cart', () => {
   const turnoStore = useTurnoStore()
   const itemsByTurno = ref<CartByTurno>({ primo: [], secondo: [] })
 
-  // Getter per gli elementi del carrello corrente
-  const items = computed(() => {
-    const currentTurno = turnoStore.turnoSelezionato || 'primo'
-    return itemsByTurno.value[currentTurno] || []
-  })
-
-  // Calcoli derivati
-  const totalItems = computed(() => items.value.reduce((acc, item) => acc + item.quantity, 0))
-  const totalUniqueItems = computed(() => items.value.length)
-  const totalPrice = computed(() => items.value.reduce((acc, item) => acc + (item.price * item.quantity), 0))
-
-  // Azioni principali
-  function addToCart(product: Omit<CartItem, 'quantity'>, quantity: number) {
-    const currentTurno = turnoStore.turnoSelezionato || 'primo'
-    const cart = itemsByTurno.value[currentTurno]
-    const existingItem = cart.find(item => item.id === product.id)
-
-    existingItem
-      ? existingItem.quantity += quantity
-      : cart.push({ ...product, quantity })
-  }
+  const currentTurno = computed(() => turnoStore.turnoSelezionato || 'primo')
 
   function updateQuantity(productId: number, quantity: number) {
-    const currentTurno = turnoStore.turnoSelezionato || 'primo'
-    const item = itemsByTurno.value[currentTurno].find(item => item.id === productId)
-    if (item) item.quantity = quantity
+    const cart = itemsByTurno.value[currentTurno.value]
+    const existingItem = cart.find(item => item.id === productId)
+
+    if (existingItem) {
+      existingItem.quantity += quantity
+    } else {
+      cart.push({ id: productId, quantity: quantity })
+    }
   }
 
   function removeFromCart(productId: number) {
-    const currentTurno = turnoStore.turnoSelezionato || 'primo'
-    itemsByTurno.value[currentTurno] = itemsByTurno.value[currentTurno].filter(item => item.id !== productId)
+    itemsByTurno.value[currentTurno.value] = itemsByTurno.value[currentTurno.value].filter(item => item.id !== productId)
   }
 
-  // Funzioni di pulizia
-  const clearCart = () => {
-    const currentTurno = turnoStore.turnoSelezionato || 'primo'
-    itemsByTurno.value[currentTurno] = []
+  function clearCart() {
+    itemsByTurno.value[currentTurno.value] = []
   }
 
-  const clearAllCarts = () => {
+  function clearAllCarts() {
     itemsByTurno.value = { primo: [], secondo: [] }
   }
 
+  function getItems() {
+    return itemsByTurno.value[currentTurno.value]
+  }
+
   return {
-    itemsByTurno,
-    items,
-    totalItems,
-    totalUniqueItems,
-    totalPrice,
-    addToCart,
+    getItems,
     updateQuantity,
     removeFromCart,
     clearCart,
