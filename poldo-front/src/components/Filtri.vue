@@ -202,7 +202,7 @@ export default defineComponent({
 <style scoped>
 .filtri-btn {
   position: fixed;
-  top: 205px;
+  top: 170px;
   left: -16px;
   background-color: var(--poldo-primary);
   color: white;
