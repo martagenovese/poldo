@@ -310,8 +310,6 @@ export default defineComponent({
 input[type="checkbox"],
 input[type="radio"] {
   accent-color: var(--poldo-primary);
-  width: 16px;
-  height: 16px;
   cursor: pointer;
 }
 

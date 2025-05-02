@@ -14,7 +14,7 @@ export interface Product {
 
 const defaultImage = "https://lh3.googleusercontent.com/a/ACg8ocLPv09a9-uNbEG-ZfRm5bWQUlyLOpBaKxHz88de_c6vB8RvQ_Plrg=s96-c"
 
-const fetchProducts = async () => {
+const fetchProducts = async (): Promise<Product[]> => {
   const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NDksInJ1b2xvIjoic3R1ZGVudGUiLCJpYXQiOjE3NDQzMDc3NjksImV4cCI6MTc3NTg2NTM2OX0.mdqnDVZpEotkEEXMaCj9f-rfYBx_b4WeJr97g3L6MP8"
   const headers = new Headers({
     Authorization: `Bearer ${token}`,
@@ -37,34 +37,58 @@ const fetchProducts = async () => {
   }))
 }
 
-const defaultProducts: Product[] = await fetchProducts()
-
 export const useProductsStore = defineStore('products', () => {
-  const products = ref<Product[]>(defaultProducts)
+  const products = ref<Product[]>([])
+  const allIngredients = ref<string[]>([])
+  const allTags = ref<string[]>([])
 
-  const allIngredients = ref<string[]>(Array.from(
-    new Set(defaultProducts.flatMap(p => p.ingredients))
-  ))
+  const initializeStore = async () => {
+    try {
+      const fetchedProducts = await fetchProducts()
+      products.value = fetchedProducts
 
-  const allTags = ref<string[]>(Array.from(
-    new Set(defaultProducts.flatMap(p => p.tags))
-  ))
+      // Aggiorna gli ingredienti
+      allIngredients.value = Array.from(
+        new Set(fetchedProducts.flatMap(p => p.ingredients))
+      )
 
-  function addProduct(newProduct: Omit<Product, 'id'>) {
+      // Aggiorna i tags
+      allTags.value = Array.from(
+        new Set(fetchedProducts.flatMap(p => p.tags))
+      )
+    } catch (error) {
+      console.error('Failed to initialize products store:', error)
+      // Gestisci l'errore come preferisci
+    }
+  }
+
+  // Inizializza lo store automaticamente al creazione
+  initializeStore()
+
+  const addProduct = (newProduct: Omit<Product, 'id'>) => {
+    const newId = products.value.length > 0
+      ? Math.max(...products.value.map(p => p.id)) + 1
+      : 1
+
     products.value.push({
       ...newProduct,
-      id: Math.max(...products.value.map(p => p.id)) + 1
+      id: newId
     })
 
-    // Update filters lists
-    allIngredients.value = Array.from(new Set([...allIngredients.value, ...newProduct.ingredients]))
-    allTags.value = Array.from(new Set([...allTags.value, ...newProduct.tags]))
+    // Aggiorna le liste filtri
+    allIngredients.value = Array.from(
+      new Set([...allIngredients.value, ...newProduct.ingredients])
+    )
+    allTags.value = Array.from(
+      new Set([...allTags.value, ...newProduct.tags])
+    )
   }
 
   return {
     products,
     allIngredients,
     allTags,
-    addProduct
+    addProduct,
+    initializeStore
   }
 }, { persist: true })

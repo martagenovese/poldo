@@ -76,6 +76,26 @@ const flipCard = (event: Event) => {
         isFlipped.value = !isFlipped.value
     }
 }
+
+const handleScroll = (event: WheelEvent) => {
+  event.preventDefault()
+  const delta = Math.sign(event.deltaY)
+  const container = event.currentTarget as HTMLElement
+  container.scrollTop += delta * 20
+}
+
+let touchStartY = 0
+const handleTouchStart = (event: TouchEvent) => {
+  touchStartY = event.touches[0].clientY
+}
+
+const handleTouchMove = (event: TouchEvent) => {
+  const touchY = event.touches[0].clientY
+  const delta = touchStartY - touchY
+  const container = event.currentTarget as HTMLElement
+  container.scrollTop += delta
+  touchStartY = touchY
+}
 </script>
 
 <template>
