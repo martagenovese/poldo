@@ -33,7 +33,7 @@ const fetchProducts = async (): Promise<Product[]> => {
     imageSrc: item.img || defaultImage,
     price: parseFloat(item.prezzo),
     tags: item.tags,
-    isActive: item.attivo === 1
+    isActive: item.attivo === 1,
   }))
 }
 
@@ -84,11 +84,16 @@ export const useProductsStore = defineStore('products', () => {
     )
   }
 
+  const getProductById = (id: number) => {
+    return products.value.find(product => product.id === id)
+  }
+
   return {
     products,
     allIngredients,
     allTags,
     addProduct,
-    initializeStore
+    initializeStore,
+    getProductById
   }
 }, { persist: true })
