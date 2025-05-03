@@ -45,6 +45,7 @@ export const useCartStore = defineStore('cart', () => {
   }
 
   return {
+    itemsByTurno,
     getItems,
     updateQuantity,
     removeFromCart,
@@ -52,5 +53,8 @@ export const useCartStore = defineStore('cart', () => {
     clearAllCarts
   }
 }, {
-  persist: true
+  persist: {
+    key: 'cart-storage',
+    storage: localStorage,
+  }
 })
