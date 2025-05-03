@@ -15,26 +15,27 @@ const allProducts = computed(() => productsStore.products)
 console.log('allProducts', allProducts.value)
 
 const items = computed(() => cartStore.getItems())
-console.log('items', items.value)
 
-const hasItems = computed(() => items.value.length > 0)
-
-const cart = computed(() => {
+const itemsDetails = computed(() => {
     return items.value.map(item => {
         const product = allProducts.value.find(p => p.id === item.id)
         return {
             ...item,
-            title: product ? product.title : 'Prodotto sconosciuto',
-            price: product ? product.price : 0
+            ...product,
         }
     })
 })
+
+console.log('itemsDetails', itemsDetails.value)
+
+const hasItems = computed(() => items.value.length > 0)
+
 
 
 const totalPrice = computed(() => {
     return items.value.reduce((total, item) => {
         const product = allProducts.value.find(p => p.id === item.id)
-        return total + (product ? product.price * item.quantity : 0)
+        return total + (product.price * item.quantity)
     }, 0)
 })
 
@@ -56,58 +57,87 @@ const clearCart = () => {
 const handleAlertClose = () => {
     showCheckoutAlert.value = false
 }
+
+const selectedMacro = ref('personale')
+
 </script>
 
 <template>
     <div class="carrello">
         <Alert v-if="showCheckoutAlert" type="error" :message="checkoutAlertMessage" @close="handleAlertClose" />
 
-        <div v-if="!hasItems" class="empty-cart">
-            <p>Il tuo carrello è vuoto</p>
-            <button class="continue-btn" @click="continueShopping">Continua lo shopping</button>
+        <div class="category-switch">
+            <div class="switch-container">
+                <button class="switch-btn" :class="{ active: selectedMacro === 'personale' }"
+                    @click="selectedMacro = 'personale'">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M18 6H6L2 22h20L18 6zm-6 7c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" />
+                        <circle cx="12" cy="9" r="1" />
+                    </svg>
+                    <span>Personale</span>
+                </button>
+
+                <button class="switch-btn" :class="{ active: selectedMacro === 'classe' }"
+                    @click="selectedMacro = 'classe'">
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M21 5V3H3v2l8 9v5H6v2h12v-2h-5v-5l8-9zM7.43 7L5.66 5h12.69l-1.78 2H7.43z" />
+                    </svg>
+                    <span>Classe</span>
+                </button>
+            </div>
         </div>
 
-        <div v-else class="cart-summary">
-            <div class="summary-header">
-                <h2>Riepilogo ordine</h2>
+        <div v-if="selectedMacro === 'personale'">
+            <div v-if="!hasItems" class="empty-cart">
+                <p>Il tuo carrello è vuoto</p>
+                <button class="continue-btn" @click="continueShopping">Continua lo shopping</button>
             </div>
 
-            <div class="summary-content">
-                <!-- Receipt items -->
-                <div class="receipt-items">
-                    <div v-for="item in items" :key="item.id" class="receipt-item">
-                        <span class="product-info">
-                            x{{ item.quantity }}
-                            {{
-                                allProducts.find(p => p.id === item.id)?.title || 'Prodotto sconosciuto'
-                            }}
-                        </span>
-                        <QuantityControl 
-                            :productId="item.id" />
-                        <span class="item-total">
-                            €{{
-                                (allProducts.find(p => p.id === item.id)?.price || 0 * item.quantity).toFixed(2)
-                            }}
-                        </span>
+
+            <div v-else class="cart-summary">
+                <div class="summary-header">
+                    <h2>Riepilogo ordine personale</h2>
+                </div>
+
+                <div class="summary-content">
+                    <!-- Receipt items -->
+                    <div class="receipt-items">
+                        <div v-for="item in itemsDetails" :key="item.id" class="receipt-item">
+                            <img :src="item.imageSrc" alt="Product Image" class="product-image" />
+                            <span class="product-info">
+                                x{{ item.quantity }}
+                                {{
+                                    item.title
+                                }}
+                            </span>
+                            <div class="quantity-price">
+                                <QuantityControl :productId="item.id" :delete="false" />
+                                <span class="item-total">
+                                    €{{
+                                        (item.quantity * item.price).toFixed(2)
+                                    }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Receipt total -->
+                    <div class="receipt-total">
+                        <span>Totale</span>
+                        <span>€{{ totalPrice.toFixed(2) }}</span>
                     </div>
                 </div>
 
-                <!-- Receipt divider -->
-                <div class="receipt-divider"></div>
-
-                <!-- Receipt total -->
-                <div class="receipt-total">
-                    <span>Totale</span>
-                    <span>€{{ totalPrice.toFixed(2) }}</span>
+                <div class="summary-actions">
+                    <button class="checkout-btn" @click="checkout">Procedi all'ordine</button>
+                    <button class="clear-btn" @click="clearCart">Svuota carrello</button>
+                    <button class="continue-btn" @click="continueShopping">Continua lo shopping</button>
                 </div>
             </div>
-
-            <div class="summary-actions">
-                <button class="checkout-btn" @click="checkout">Procedi all'ordine</button>
-                <button class="clear-btn" @click="clearCart">Svuota carrello</button>
-                <button class="continue-btn" @click="continueShopping">Continua lo shopping</button>
-            </div>
         </div>
+
+
     </div>
 </template>
 
@@ -149,6 +179,12 @@ h2 {
     overflow-y: auto;
     padding: 25px;
     margin-bottom: 40px;
+}
+
+.product-image {
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
 }
 
 :deep(.cart-product-card .card-prodotto) {
@@ -254,12 +290,24 @@ h2 {
 
 /* Receipt styling */
 .receipt-header,
-.receipt-item,
 .receipt-total {
     display: flex;
     justify-content: space-between;
     width: 100%;
     font-size: 0.9rem;
+}
+
+
+.receipt-item {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+    font-size: 0.9rem;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--color-border);
 }
 
 .receipt-header {
@@ -271,19 +319,15 @@ h2 {
 
 .receipt-items {
     max-height: 200px;
-    overflow-y: auto;
-    margin-bottom: 10px;
-}
-
-.receipt-item {
-    margin-bottom: 6px;
     padding: 4px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: flex-start;
 }
 
 .quantity-price {
     display: flex;
-    min-width: 120px;
-    justify-content: space-between;
 }
 
 .product-name {
@@ -296,7 +340,6 @@ h2 {
 
 .product-info {
     flex: 1;
-    padding-right: 10px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -308,8 +351,8 @@ h2 {
 }
 
 .item-total {
-    min-width: 70px;
     text-align: right;
+    width: 60px;
 }
 
 .receipt-divider {
@@ -326,6 +369,63 @@ h2 {
     margin-bottom: 10px;
 }
 
+
+/* Switch */
+.category-switch {
+    display: flex;
+    justify-content: center;
+    margin: 15px 0;
+}
+
+.switch-container {
+    display: flex;
+    background: var(--color-background-soft);
+    border-radius: 50px;
+    padding: 5px;
+    box-shadow: 0 2px 8px var(--poldo-card-shadow);
+}
+
+
+.switch-btn {
+    display: flex;
+    align-items: center;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 50px;
+    background: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    gap: 8px;
+}
+
+.switch-btn span {
+    font-weight: 500;
+    color: var(--poldo-text);
+    transition: color 0.3s ease;
+}
+
+.switch-btn.active {
+    background: var(--poldo-primary);
+    box-shadow: 0 2px 8px rgba(239, 194, 12, 0.3);
+}
+
+.switch-btn.active .icon {
+    stroke: var(--poldo-background);
+}
+
+.switch-btn.active span {
+    color: var(--poldo-background);
+}
+
+.icon {
+    width: 24px;
+    height: 24px;
+    stroke: var(--poldo-text);
+    stroke-width: 1.5;
+    fill: none;
+    transition: stroke 0.3s ease;
+}
+
 /* Responsive layout for small screens */
 @media (max-width: 600px) {
     .cart-items-list {
@@ -336,6 +436,10 @@ h2 {
     :deep(.cart-product-card) {
         width: 130px !important;
         height: 160px !important;
+    }
+
+    .switch-btn {
+        padding: 8px 15px;
     }
 }
 </style>
