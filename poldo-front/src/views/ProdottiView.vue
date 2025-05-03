@@ -133,7 +133,7 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
         <CardProdotto
           v-for="product in macroFilteredProducts"
           :key="product.id"
-          v-bind="product"
+          v-bind="{productId: product.id }"
         />
       </CardGrid>
 
@@ -145,7 +145,7 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
             <CardProdotto
               v-for="product in products"
               :key="product.id"
-              v-bind="product"
+              v-bind="{ ...product, productId: product.id }"
             />
           </CardGrid>
         </div>
