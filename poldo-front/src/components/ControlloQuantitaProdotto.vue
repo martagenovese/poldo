@@ -54,9 +54,6 @@ const removeItem = () => {
 
 <style scoped>
 .quantity-controls {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
     display: flex;
     align-items: center;
     gap: 8px;
