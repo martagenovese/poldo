@@ -3,8 +3,8 @@ import HomeView from '../views/HomeView.vue'
 import ProdottiView from '../views/ProdottiView.vue'
 import CarrelloView from '../views/CarrelloView.vue'
 import { useTurnoStore } from '../stores/turno'
-import NewProdottiView from '../views/bar/NewProdottiView.vue'
-import ModificaView from '../views/bar/ModificaView.vue'
+import NewProdottiView from '../views/Gestione/NewProdottiView.vue'
+import ModificaView from '../views/Gestione/ProdottiView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -27,13 +27,13 @@ const router = createRouter({
       meta: { requiresTurno: true }
     },
     {
-        path: '/inserisciprodotto',
+      path: '/inserisciprodotto',
       name: 'inserisciProdotto',
       component: NewProdottiView,
     },
     {
-      path: '/modifica',
-      name: 'modifica',
+      path: '/gestione/prodotti',
+      name: 'modificaProdotti',
       component: ModificaView,
     }
   ],
@@ -46,7 +46,7 @@ router.beforeEach((to, from, next) => {
     next()
     return
   }
-  
+
   // Check if turno is selected
   const turnoStore = useTurnoStore()
   if (!turnoStore.turnoSelezionato) {
