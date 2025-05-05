@@ -3,6 +3,7 @@ import { useCartStore } from '@/stores/cart'
 import { useProductsStore } from '@/stores/products'
 import Alert from '@/components/Alert.vue'
 import QuantityControl from '@/components/ControlloQuantitaProdotto.vue'
+import Switch from '@/components/Switch.vue'
 
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -60,6 +61,14 @@ const handleAlertClose = () => {
 
 const selectedMacro = ref('personale')
 
+
+const isconf = ref(true)
+function confirmOrd(id: number, status: boolean) {
+    isconf.value = status
+    console.log('confirmOrd', id, status);
+}
+
+
 </script>
 
 <template>
@@ -67,12 +76,13 @@ const selectedMacro = ref('personale')
         <Alert v-if="showCheckoutAlert" type="error" :message="checkoutAlertMessage" @close="handleAlertClose" />
 
         <div class="category-switch">
+
             <div class="switch-container">
                 <button class="switch-btn" :class="{ active: selectedMacro === 'personale' }"
                     @click="selectedMacro = 'personale'">
                     <svg class="icon" viewBox="0 0 24 24">
-                        <path d="M18 6H6L2 22h20L18 6zm-6 7c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" />
-                        <circle cx="12" cy="9" r="1" />
+                        <path
+                            d="M12 5.5C13.38 5.5 14.5 6.62 14.5 8S13.38 10.5 12 10.5 9.5 9.38 9.5 8 10.62 5.5 12 5.5M12 12C14.34 12 19 13.08 19 15.5V17H5V15.5C5 13.08 9.66 12 12 12Z" />
                     </svg>
                     <span>Personale</span>
                 </button>
@@ -80,14 +90,15 @@ const selectedMacro = ref('personale')
                 <button class="switch-btn" :class="{ active: selectedMacro === 'classe' }"
                     @click="selectedMacro = 'classe'">
                     <svg class="icon" viewBox="0 0 24 24">
-                        <path d="M21 5V3H3v2l8 9v5H6v2h12v-2h-5v-5l8-9zM7.43 7L5.66 5h12.69l-1.78 2H7.43z" />
+                        <path
+                            d="M16 11C17.66 11 18.99 9.66 18.99 8S17.66 5 16 5C14.34 5 13 6.34 13 8S14.34 11 16 11M8 11C9.66 11 10.99 9.66 10.99 8S9.66 5 8 5C6.34 5 5 6.34 5 8S6.34 11 8 11M8 13C5.67 13 1 14.17 1 16.5V18H15V16.5C15 14.17 10.33 13 8 13M16 13C15.71 13 15.38 13.03 15.03 13.05C16.19 13.89 17 15.02 17 16.5V18H23V16.5C23 14.17 18.33 13 16 13Z" />
                     </svg>
                     <span>Classe</span>
                 </button>
             </div>
         </div>
 
-        <div v-if="selectedMacro === 'personale'">
+        <div v-if="selectedMacro === 'personale'" class="cart-content">
             <div v-if="!hasItems" class="empty-cart">
                 <p>Il tuo carrello è vuoto</p>
                 <button class="continue-btn" @click="continueShopping">Continua lo shopping</button>
@@ -123,16 +134,90 @@ const selectedMacro = ref('personale')
 
 
                     <!-- Receipt total -->
-                    <div class="receipt-total">
-                        <span>Totale</span>
-                        <span>€{{ totalPrice.toFixed(2) }}</span>
-                    </div>
+
                 </div>
 
+                <div class="receipt-total">
+                    <span>Totale</span>
+                    <span>€{{ totalPrice.toFixed(2) }}</span>
+                </div>
                 <div class="summary-actions">
                     <button class="checkout-btn" @click="checkout">Procedi all'ordine</button>
                     <button class="clear-btn" @click="clearCart">Svuota carrello</button>
                     <button class="continue-btn" @click="continueShopping">Continua lo shopping</button>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="selectedMacro === 'classe'" class="cart-content">
+            <div v-if="!hasItems" class="empty-cart">
+                <p>Il carrello della tua classe è vuoto</p>
+            </div>
+
+
+            <div v-else class="cart-summary">
+                <div class="summary-header">
+                    <h2>Riepilogo ordine classe 5Bi</h2>
+                </div>
+
+                <div class="summary-content classe">
+                    <!-- Receipt items -->
+                    <div class="receipt-items">
+                        <div class="receipt-person">
+                            <span>Giacomo Marconi</span>
+                            <div class="switch-container">
+                                <button class="switch-btn" :class="{ active: isconf }"
+                                    @click="confirmOrd(1, true)">
+                                    <svg class="icon" viewBox="0 0 24 24">
+                                        <path
+                                            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                    </svg>
+
+                                    <span>Accetta</span>
+                                </button>
+
+                                <button class="switch-btn" :class="{ active: !isconf }"
+                                    @click="confirmOrd(1, false)">
+                                    <svg class="icon" viewBox="0 0 24 24">
+                                        <path
+                                            d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z" />
+                                    </svg>
+                                    <span>Rifiuta</span>
+                                </button>
+                            </div>
+
+                        </div>
+                        <div v-for="item in itemsDetails" :key="item.id" class="receipt-item">
+                            <img :src="item.imageSrc" alt="Product Image" class="product-image" />
+                            <span class="product-info">
+                                x{{ item.quantity }}
+                                {{
+                                    item.title
+                                }}
+                            </span>
+                            <div class="quantity-price">
+                                <!-- <QuantityControl :productId="item.id" :delete="false" /> -->
+                                <span class="item-total">
+                                    €{{
+                                        (item.quantity * item.price).toFixed(2)
+                                    }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+                </div>
+                <!-- Receipt total -->
+                <div class="receipt-total">
+                    <span>Totale</span>
+                    <span>€{{ totalPrice.toFixed(2) }}</span>
+                </div>
+
+                <div class="summary-actions">
+                    <button class="checkout-btn" @click="checkout">Conferma ordine</button>
+                    <button class="checkout-btn" @click="checkout">Vedi QR-code</button>
                 </div>
             </div>
         </div>
@@ -147,7 +232,6 @@ const selectedMacro = ref('personale')
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    padding: 20px 0;
 }
 
 h1,
@@ -169,16 +253,6 @@ h2 {
 
 .empty-cart p {
     font-size: 1.2rem;
-    margin-bottom: 20px;
-}
-
-.cart-content {
-    display: flex;
-    flex-direction: column;
-    gap: 30px;
-    overflow-y: auto;
-    padding: 25px;
-    margin-bottom: 40px;
 }
 
 .product-image {
@@ -212,22 +286,42 @@ h2 {
     font-size: 1rem !important;
 }
 
+.cart-content {
+    margin: 15px 0 0 0;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
 .cart-summary {
     background-color: var(--card-bg);
     padding: 20px;
     border-radius: 10px;
     box-shadow: 0 2px 8px var(--card-shadow);
-    position: relative;
-    top: auto;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    justify-content: flex-start;
+    align-items: center;
 }
 
 .summary-header {
-    margin-bottom: 20px;
     border-bottom: 1px solid var(--color-border);
-    padding-bottom: 10px;
+    width: 100%;
 }
 
 .summary-content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+    min-height: 0;
+    align-items: center;
+    justify-content: center;
     overflow-y: auto;
 }
 
@@ -239,6 +333,7 @@ h2 {
 }
 
 .summary-actions {
+    width: 100%;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -306,8 +401,36 @@ h2 {
     align-items: center;
     width: 100%;
     font-size: 0.9rem;
-    padding: 8px 0;
+    padding: 8px 8px 0 0;
     border-bottom: 1px solid var(--color-border);
+}
+
+.classe .receipt-item {
+    margin-left: 25px;
+    width: auto;
+}
+
+
+.receipt-person {
+    font-weight: bold;
+    font-size: 1rem;
+    border-bottom: 2px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.receipt-person .switch-container {
+    margin: 5px;
+}
+
+.receipt-person .icon {
+    height: 18px;
+    width: 18px;
+}
+
+.receipt-person .switch-btn {
+    padding: 5px 10px;
 }
 
 .receipt-header {
@@ -318,12 +441,13 @@ h2 {
 }
 
 .receipt-items {
-    max-height: 200px;
-    padding: 4px 0;
+    height: 100%;
+    width: 100%;
     display: flex;
     flex-direction: column;
     gap: 8px;
     justify-content: flex-start;
+    overflow-y: auto;
 }
 
 .quantity-price {
@@ -363,10 +487,10 @@ h2 {
 }
 
 .receipt-total {
+    padding: 10px;
     font-weight: bold;
     font-size: 1.1rem;
     color: var(--poldo-primary);
-    margin-bottom: 10px;
 }
 
 
@@ -374,17 +498,15 @@ h2 {
 .category-switch {
     display: flex;
     justify-content: center;
-    margin: 15px 0;
+    margin: 15px 0 0 0;
 }
 
 .switch-container {
     display: flex;
     background: var(--color-background-soft);
     border-radius: 50px;
-    padding: 5px;
     box-shadow: 0 2px 8px var(--poldo-card-shadow);
 }
-
 
 .switch-btn {
     display: flex;
@@ -425,6 +547,7 @@ h2 {
     fill: none;
     transition: stroke 0.3s ease;
 }
+
 
 /* Responsive layout for small screens */
 @media (max-width: 600px) {
