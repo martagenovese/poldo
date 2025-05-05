@@ -6,6 +6,7 @@ import { useTurnoStore } from '../stores/turno'
 import NewProdottiView from '../views/bar/NewProdottiView.vue'
 import ModificaView from '../views/bar/ModificaView.vue'
 import AuthView from '@/views/AuthView.vue'
+import ReportsView from '@/views/bar/ReportsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -41,7 +42,13 @@ const router = createRouter({
       path: '/autenticazione',
       name: 'autenticazione',
       component: AuthView,
-      meta: { requiresTurno: true }
+      meta: { requiresTurno: false }
+    },
+    {
+      path: '/reports',
+      name: 'reports',
+      component: ReportsView,
+      meta: { requiresTurno: false }
     }
   ],
 })
