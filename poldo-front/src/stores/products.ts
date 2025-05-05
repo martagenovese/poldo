@@ -91,6 +91,7 @@ export const useProductsStore = defineStore('products', () => {
         // Gestisci l'errore come preferisci
     }
 }
+
   // Chiamata automatica all'inizializzazione
   initializeStore().catch(error =>
     console.error('Auto-initialization error:', error)
