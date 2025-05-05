@@ -5,6 +5,8 @@ type ProductChange = {
   price: number
   description: string
   ingredients: string[]
+  tags: string[]
+  isActive: boolean
 }
 
 type FilterChange = {
@@ -35,8 +37,10 @@ export const usePendingChangesStore = defineStore('pendingChanges', {
       this.filterChanges.push(change)
     },
 
-    removeFilterChange(index: number) {
-      this.filterChanges.splice(index, 1)
+    removeFilterChange(payload: { type: 'ingredient' | 'tag', name: string }) {
+      this.filterChanges = this.filterChanges.filter(c =>
+        !(c.type === payload.type && c.name === payload.name)
+      )
     },
 
     clearAllChanges() {

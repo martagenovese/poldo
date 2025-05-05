@@ -1,50 +1,25 @@
 <template>
   <div>
-    <button class="filtri-btn" @click="toggleSidebar">
-      <span>Filtri</span>
-    </button>
-
-    <div ref="filtriContainer" class="sidebar" :class="{ open: isSidebarOpen }">
-      <div class="sidebar-content">
-        <div class="sidebar-header">
-          <h3>Gestione Ingredienti e Tag</h3>
-          <button class="close-btn" @click="toggleSidebar">×</button>
-        </div>
-
+    <div ref="filtriContainer" class="filters-container">
+      <div class="filters-content">
         <!-- Sezione Ingredienti -->
         <div class="filter-section">
           <div class="section-header">
             <h4 class="subtitle">Ingredienti</h4>
-            <div class="add-input compact">
-              <input
-                v-model="newIngredient"
-                placeholder="Nuovo..."
-                @keyup.enter="addNewIngredient"
-              />
-              <button @click="addNewIngredient">+</button>
-            </div>
           </div>
           <div class="inline-list">
-            <div
-              v-for="ingredient in visibleIngredients"
-              :key="ingredient.originalName"
-              class="inline-item"
-            >
+            <div v-for="ingredient in visibleIngredients" class="inline-item">
               <div class="editable-wrapper">
-                <input
-                  type="text"
-                  v-model="ingredient.currentName"
-                  @blur="updateIngredient(ingredient.originalName, ingredient.currentName)"
-                  class="compact-input"
-                />
+                <input type="text" v-model="ingredient.currentName"
+                  @blur="updateIngredient(ingredient.originalName, ingredient.currentName)" class="compact-input" />
+                <button v-if="hasPendingChange('ingredient', ingredient)" @click="resetFilter('ingredient', ingredient)"
+                  class="reset-btn" title="Ripristina">↺</button>
                 <div v-if="hasPendingChange('ingredient', ingredient)" class="pending-dot"></div>
               </div>
-              <button
-                class="delete-btn"
-                @click="deleteIngredient(ingredient.originalName)"
-              >
-                ×
-              </button>
+            </div>
+            <div class="add-input compact">
+              <input v-model="newIngredient" placeholder="Nuovo..." @keyup.enter="addNewIngredient" />
+              <button @click="addNewIngredient">+</button>
             </div>
           </div>
         </div>
@@ -53,36 +28,20 @@
         <div class="filter-section">
           <div class="section-header">
             <h4 class="subtitle">Tag</h4>
-            <div class="add-input compact">
-              <input
-                v-model="newTag"
-                placeholder="Nuovo..."
-                @keyup.enter="addNewTag"
-              />
-              <button @click="addNewTag">+</button>
-            </div>
           </div>
           <div class="inline-list">
-            <div
-              v-for="tag in visibleTags"
-              :key="tag.originalName"
-              class="inline-item"
-            >
+            <div v-for="tag in visibleTags" :key="tag.originalName" class="inline-item">
               <div class="editable-wrapper">
-                <input
-                  type="text"
-                  v-model="tag.currentName"
-                  @blur="updateTag(tag.originalName, tag.currentName)"
-                  class="compact-input"
-                />
+                <input type="text" v-model="tag.currentName" @blur="updateTag(tag.originalName, tag.currentName)"
+                  class="compact-input" />
+                <button v-if="hasPendingChange('tag', tag)" @click="resetFilter('tag', tag)" class="reset-btn"
+                  title="Ripristina">↺</button>
                 <div v-if="hasPendingChange('tag', tag)" class="pending-dot"></div>
               </div>
-              <button
-                class="delete-btn"
-                @click="deleteTag(tag.originalName)"
-              >
-                ×
-              </button>
+            </div>
+            <div class="add-input compact">
+              <input v-model="newTag" placeholder="Nuovo..." @keyup.enter="addNewTag" />
+              <button @click="addNewTag">+</button>
             </div>
           </div>
         </div>
@@ -154,11 +113,11 @@ const hasPendingChange = (
 
     if (change.action === 'update') {
       return change.name === item.originalName ||
-             change.newName === item.currentName
+        change.newName === item.currentName
     }
 
     return change.name === item.currentName ||
-           change.name === item.originalName
+      change.name === item.originalName
   })
 }
 
@@ -204,46 +163,40 @@ const addNewTag = () => {
 }
 
 const updateIngredient = (oldVal: string, newVal: string) => {
-  if (newVal.trim() && newVal !== oldVal) {
+  const name = newVal.trim()
+  if (name && name !== oldVal) {
+    // se è cambiato, (ri)aggiungo la change
     pendingChangesStore.addFilterChange({
       type: 'ingredient',
       action: 'update',
       name: oldVal,
-      newName: newVal.trim()
+      newName: name
     })
+  } else if (name === oldVal) {
+    // se è stato riportato al valore originale, tolgo la change
+    pendingChangesStore.removeFilterChange({ type: 'ingredient', name: oldVal })
   }
 }
 
 const updateTag = (oldVal: string, newVal: string) => {
-  if (newVal.trim() && newVal !== oldVal) {
+  const name = newVal.trim()
+  if (name && name !== oldVal) {
     pendingChangesStore.addFilterChange({
       type: 'tag',
       action: 'update',
       name: oldVal,
-      newName: newVal.trim()
+      newName: name
     })
+  } else if (name === oldVal) {
+    pendingChangesStore.removeFilterChange({ type: 'tag', name: oldVal })
   }
 }
 
-const deleteIngredient = (name: string) => {
-  pendingChangesStore.addFilterChange({
-    type: 'ingredient',
-    action: 'delete',
-    name: name
-  })
+const resetFilter = (type: ChangeType, item: PendingItem) => {
+  item.currentName = item.originalName
+  pendingChangesStore.removeFilterChange({ type, name: item.originalName })
 }
 
-const deleteTag = (name: string) => {
-  pendingChangesStore.addFilterChange({
-    type: 'tag',
-    action: 'delete',
-    name: name
-  })
-}
-
-const toggleSidebar = () => {
-  isSidebarOpen.value = !isSidebarOpen.value
-}
 
 const handleOutsideClick = (event: Event) => {
   if (filtriContainer.value && !filtriContainer.value.contains(event.target as Node)) {
@@ -253,63 +206,6 @@ const handleOutsideClick = (event: Event) => {
 </script>
 
 <style scoped>
-.filtri-btn {
-  position: fixed;
-  top: 205px;
-  left: -16px;
-  background-color: var(--poldo-primary);
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  cursor: pointer;
-  border-radius: 0px 0px 10px 10px;
-  font-size: 16px;
-  transition: transform 0.3s ease;
-  transform: translateX(0) rotate(-90deg);
-  z-index: 999;
-}
-
-.sidebar {
-  position: fixed;
-  top: 105px;
-  left: 0;
-  width: 260px;
-  height: calc(95% - 110px);
-  background: var(--color-background-soft);
-  box-shadow: 5px 0 5px var(--poldo-card-shadow);
-  z-index: 1000;
-  transform: translateX(-100%);
-  transition: transform 0.3s ease;
-  border-radius: 0 20px 20px 0;
-  overflow: hidden;
-}
-
-.sidebar.open {
-  transform: translateX(0);
-}
-
-.sidebar-content {
-  height: 100%;
-  overflow-y: auto;
-  padding: 1rem;
-}
-
-.close-btn {
-  background-color: var(--poldo-primary);
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  color: var(--poldo-text);
-  font-size: 20px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .subtitle {
   color: var(--poldo-primary);
   font-size: 1.1rem;
@@ -318,14 +214,20 @@ const handleOutsideClick = (event: Event) => {
 }
 
 .filter-section {
-  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 20px;
 }
 
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
+.filter-content {
+  height: 100%;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.filters-container {
+  background: var(--color-background-soft);
+  border-radius: 12px;
+  padding: 20px;
 }
 
 .inline-list {
@@ -359,10 +261,10 @@ const handleOutsideClick = (event: Event) => {
 
 .pending-dot {
   position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 8px;
-  height: 8px;
+  top: -4px;
+  left: -8px;
+  width: 10px;
+  height: 10px;
   background-color: #2196F3;
   border-radius: 50%;
 }
@@ -390,26 +292,35 @@ const handleOutsideClick = (event: Event) => {
   cursor: pointer;
 }
 
-.delete-btn {
+.reset-controls {
+  margin-bottom: 1rem;
+  text-align: right;
+}
+
+.reset-btn {
   background: none;
   border: none;
-  color: var(--poldo-red);
+  color: var(--poldo-primary);
   cursor: pointer;
-  padding: 0 4px;
-  font-size: 16px;
-  line-height: 1;
+  margin-left: 0.5rem;
+  padding: 0 0.3rem;
+  font-size: 0.9em;
+}
+
+.reset-btn:hover {
+  color: var(--poldo-accent);
 }
 
 /* Scrollbar styling */
-.sidebar-content::-webkit-scrollbar {
+.filters-content::-webkit-scrollbar {
   width: 6px;
 }
 
-.sidebar-content::-webkit-scrollbar-track {
+.filters-content::-webkit-scrollbar-track {
   background: var(--color-background-soft);
 }
 
-.sidebar-content::-webkit-scrollbar-thumb {
+.filters-content::-webkit-scrollbar-thumb {
   background: var(--poldo-primary);
   border-radius: 4px;
 }

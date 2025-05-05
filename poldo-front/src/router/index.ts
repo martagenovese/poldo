@@ -3,7 +3,7 @@ import HomeView from '../views/HomeView.vue'
 import ProdottiView from '../views/ProdottiView.vue'
 import CarrelloView from '../views/CarrelloView.vue'
 import { useTurnoStore } from '../stores/turno'
-import NewProdottiView from '../views/Gestione/NewProdottiView.vue'
+import AddProdottoView from '../views/Gestione/AddProdottoView.vue'
 import ModificaView from '../views/Gestione/ProdottiView.vue'
 
 const router = createRouter({
@@ -29,7 +29,7 @@ const router = createRouter({
     {
       path: '/inserisciprodotto',
       name: 'inserisciProdotto',
-      component: NewProdottiView,
+      component: AddProdottoView,
     },
     {
       path: '/gestione/prodotti',
