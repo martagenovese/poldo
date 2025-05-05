@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { PropType } from 'vue'
+
+type AlertType = 'info' | 'success' | 'error' | 'warning' | 'confirm'
 
 const props = defineProps({
   type: {
-    type: String,
+    type: String as PropType<AlertType>,
     default: 'info',
     validator: (value: string) => ['info', 'success', 'error', 'warning', 'confirm'].includes(value)
   },
@@ -14,29 +17,29 @@ const props = defineProps({
 })
 
 const emit = defineEmits<{
-  (e: 'confirm'): void
-  (e: 'cancel'): void
-  (e: 'close'): void
+  (e: 'confirm' | 'cancel' | 'close'): void
 }>()
+
+type ButtonAction = 'confirm' | 'cancel' | 'close'
 
 const buttonConfig = computed(() => {
   switch (props.type) {
     case 'confirm':
       return [
-        { text: 'Conferma', action: 'confirm', color: 'var(--poldo-green)' },
-        { text: 'Annulla', action: 'cancel', color: 'var(--poldo-red)' }
+        { text: 'Conferma', action: 'confirm' as ButtonAction, color: 'var(--poldo-green)' },
+        { text: 'Annulla', action: 'cancel' as ButtonAction, color: 'var(--poldo-red)' }
       ]
     case 'error':
       return [
-        { text: 'OK', action: 'close', color: 'var(--poldo-red)' }
+        { text: 'OK', action: 'close' as ButtonAction, color: 'var(--poldo-red)' }
       ]
     case 'success':
       return [
-        { text: 'OK', action: 'close', color: 'var(--poldo-green)' }
+        { text: 'OK', action: 'close' as ButtonAction, color: 'var(--poldo-green)' }
       ]
     default:
       return [
-        { text: 'OK', action: 'close', color: 'var(--poldo-primary)' }
+        { text: 'OK', action: 'close' as ButtonAction, color: 'var(--poldo-primary)' }
       ]
   }
 })
