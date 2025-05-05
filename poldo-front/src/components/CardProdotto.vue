@@ -1,37 +1,29 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
-import { useCartStore } from '@/stores/cart'
+import { ref, onMounted } from 'vue'
 import { useFavoritesStore } from '@/stores/favorites'
+import QuantityControl from './ControlloQuantitaProdotto.vue'
+import { useProductsStore } from '@/stores/products'
 
 const props = defineProps<{
-    imageSrc: string
-    imageAlt?: string
-    title: string
-    description?: string
-    ingredients?: string[]
-    productId?: number
-    inCartView?: boolean
-    price?: number
-    disableFlip?: boolean
+    productId: number
 }>()
 
-const cartStore = useCartStore()
+const product = {
+    ...useProductsStore().getProductById(props.productId),
+    disableFlip: false,
+}
+
 const favoritesStore = useFavoritesStore()
 const isFlipped = ref(false)
 const isFavorited = ref(false)
-const quantity = ref(0)
 
-// Genera ID random se non fornito
-const id = ref(props.productId || Math.floor(Math.random() * 10000))
+const id = ref(props.productId)
+console.log('ID:', id.value)
 
-// Inizializza preferiti
 onMounted(() => {
     isFavorited.value = favoritesStore.isFavorite(id.value)
-    const cartItem = cartStore.items.find(item => item.id === id.value)
-    quantity.value = cartItem?.quantity || 0
 })
 
-// Gestione preferiti
 const toggleFavorite = () => {
     isFavorited.value = !isFavorited.value
     isFavorited.value
@@ -39,67 +31,37 @@ const toggleFavorite = () => {
         : favoritesStore.removeFavorite(id.value)
 }
 
-const increaseQuantity = () => {
-    quantity.value++
-}
-
-const decreaseQuantity = () => {
-    if (quantity.value > 0) {
-        quantity.value--
-    }
-}
-
-const removeFromCart = () => {
-    quantity.value = 0
-}
-
-// Aggiorna carrello quando cambia quantità
-watch(quantity, (newVal) => {
-    if (newVal > 0) {
-        cartStore.addToCart({
-            id: id.value,
-            title: props.title,
-            description: props.description,
-            ingredients: props.ingredients,
-            imageSrc: props.imageSrc,
-            price: props.price || 0
-        }, newVal - (cartStore.items.find(item => item.id === id.value)?.quantity || 0))
-    } else {
-        cartStore.removeFromCart(id.value)
-    }
-})
-
 // Gestione flip card
 const flipCard = (event: Event) => {
-    if (props.disableFlip) return
+    if (product.disableFlip) return
     if (!(event.target as HTMLElement).closest('.quantity-controls')) {
         isFlipped.value = !isFlipped.value
     }
 }
 
 const handleScroll = (event: WheelEvent) => {
-  event.preventDefault()
-  const delta = Math.sign(event.deltaY)
-  const container = event.currentTarget as HTMLElement
-  container.scrollTop += delta * 20
+    event.preventDefault()
+    const delta = Math.sign(event.deltaY)
+    const container = event.currentTarget as HTMLElement
+    container.scrollTop += delta * 20
 }
 
 let touchStartY = 0
 const handleTouchStart = (event: TouchEvent) => {
-  touchStartY = event.touches[0].clientY
+    touchStartY = event.touches[0].clientY
 }
 
 const handleTouchMove = (event: TouchEvent) => {
-  const touchY = event.touches[0].clientY
-  const delta = touchStartY - touchY
-  const container = event.currentTarget as HTMLElement
-  container.scrollTop += delta
-  touchStartY = touchY
+    const touchY = event.touches[0].clientY
+    const delta = touchStartY - touchY
+    const container = event.currentTarget as HTMLElement
+    container.scrollTop += delta
+    touchStartY = touchY
 }
 </script>
 
 <template>
-    <div class="card-container" :class="{ 'clickable': !props.disableFlip }" @click="flipCard">
+    <div class="card-container" :class="{ 'clickable': !product.disableFlip }" @click="flipCard">
         <div class="card-wrapper" :class="{ 'is-flipped': isFlipped }">
             <!-- Front Side -->
             <div class="card-side card-front">
@@ -117,34 +79,22 @@ const handleTouchMove = (event: TouchEvent) => {
                         </svg>
                     </button>
 
-                    <img :src="imageSrc" :alt="imageAlt" />
+                    <img :src="product.imageSrc" alt="image" />
 
                     <div class="info">
-                        <h3 class="title">{{ title }}</h3>
-                        <div v-if="price !== undefined" class="price">€{{ price.toFixed(2) }}</div>
+                        <h3 class="title">{{ product.title }}</h3>
+                        <div v-if="product.price !== undefined" class="price">€{{ product.price.toFixed(2) }}</div>
                     </div>
 
-                    <div class="quantity-controls">
-                        <button v-if="inCartView" class="quantity-btn delete" @click.stop="removeFromCart">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <path d="M3 6h18"></path>
-                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                            </svg>
-                        </button>
-                        <button class="quantity-btn minus" :class="{ 'disabled': quantity === 0 }"
-                            @click.stop="decreaseQuantity">-</button>
-                        <span class="quantity">{{ quantity }}</span>
-                        <button class="quantity-btn plus" @click.stop="increaseQuantity">+</button>
-                    </div>
+                    <QuantityControl 
+                        :product-id="id"
+                         />
                 </div>
             </div>
 
             <!-- Back Side -->
             <div class="card-side card-back">
-                <h3 class="title">{{ title }}</h3>
+                <h3 class="title">{{ product.title }}</h3>
                 <div class="scroll">
                     <div class="descr">
 
@@ -154,13 +104,13 @@ const handleTouchMove = (event: TouchEvent) => {
                             @touchmove.stop="handleTouchMove">
                             <div class="description-section">
                                 <h4>Descrizione</h4>
-                                <p>{{ description || 'Nessuna descrizione disponibile' }}</p>
+                                <p>{{ product.description || 'Nessuna descrizione disponibile' }}</p>
                             </div>
 
                             <div class="ingredients-section">
                                 <h4>Ingredienti</h4>
-                                <ul v-if="ingredients && ingredients.length > 0">
-                                    <li v-for="(ingredient, index) in ingredients" :key="index">
+                                <ul v-if="product.ingredients && product.ingredients.length > 0">
+                                    <li v-for="(ingredient, index) in product.ingredients" :key="index">
                                         {{ ingredient }}
                                     </li>
                                 </ul>

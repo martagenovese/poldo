@@ -20,9 +20,7 @@ const goToCart = () => {
   <div class="prodotti">
     <div class="prodotti-container">
       <CardGrid>
-        <CardProdotto v-for="product in productsStore.products" :key="product.id" :productId="product.id"
-          :title="product.title" :description="product.description" :ingredients="product.ingredients"
-          :imageSrc="product.imageSrc" :price="product.price" />
+        <CardProdotto v-for="product in productsStore.products" :key="product.id" :productId="product.id"/>
       </CardGrid>
     </div>
 

@@ -13,9 +13,10 @@ export interface Product {
 }
 
 const defaultImage = "https://lh3.googleusercontent.com/a/ACg8ocLPv09a9-uNbEG-ZfRm5bWQUlyLOpBaKxHz88de_c6vB8RvQ_Plrg=s96-c"
+const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NDksInJ1b2xvIjoic3R1ZGVudGUiLCJpYXQiOjE3NDQzMDc3NjksImV4cCI6MTc3NTg2NTM2OX0.mdqnDVZpEotkEEXMaCj9f-rfYBx_b4WeJr97g3L6MP8"
+
 
 const fetchProducts = async (): Promise<Product[]> => {
-  const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NDksInJ1b2xvIjoic3R1ZGVudGUiLCJpYXQiOjE3NDQzMDc3NjksImV4cCI6MTc3NTg2NTM2OX0.mdqnDVZpEotkEEXMaCj9f-rfYBx_b4WeJr97g3L6MP8"
   const headers = new Headers({
     Authorization: `Bearer ${token}`,
     Accept: 'application/json'
@@ -33,7 +34,7 @@ const fetchProducts = async (): Promise<Product[]> => {
     imageSrc: item.img || defaultImage,
     price: parseFloat(item.prezzo),
     tags: item.tags,
-    isActive: item.attivo === 1
+    isActive: item.attivo === 1,
   }))
 }
 
@@ -84,11 +85,16 @@ export const useProductsStore = defineStore('products', () => {
     )
   }
 
+  const getProductById = (id: number) => {
+    return products.value.find(product => product.id === id)
+  }
+
   return {
     products,
     allIngredients,
     allTags,
     addProduct,
-    initializeStore
+    initializeStore,
+    getProductById
   }
 }, { persist: true })
