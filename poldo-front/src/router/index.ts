@@ -5,6 +5,7 @@ import CarrelloView from '../views/CarrelloView.vue'
 import { useTurnoStore } from '../stores/turno'
 import NewProdottiView from '../views/bar/NewProdottiView.vue'
 import ModificaView from '../views/bar/ModificaView.vue'
+import AuthView from '@/views/AuthView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -35,6 +36,12 @@ const router = createRouter({
       path: '/modifica',
       name: 'modifica',
       component: ModificaView,
+    },
+    {
+      path: '/autenticazione',
+      name: 'autenticazione',
+      component: AuthView,
+      meta: { requiresTurno: true }
     }
   ],
 })
