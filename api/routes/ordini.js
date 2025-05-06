@@ -241,6 +241,8 @@ router.get('/me',
 
             const [orders] = await connection.execute(query, params);
 
+            if (orders.length === 0) return res.status(404).json({ error: 'Nessun ordine trovato' });
+
             const result = orders.map(order => ({
                 ...order,
                 prodotti: order.prodotti
