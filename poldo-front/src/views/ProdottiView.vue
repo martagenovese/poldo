@@ -6,10 +6,14 @@ import CardGrid from '@/components/CardGrid.vue'
 import CardProdotto from '@/components/CardProdotto.vue'
 import Filtri from '@/components/Filtri.vue'
 import SearchBar from '@/components/SearchBar.vue'
+import { useCartStore } from '@/stores/cart'
 
 const router = useRouter()
 const productsStore = useProductsStore()
+const cartStore = useCartStore()
 const searchQuery = ref('')
+
+const haveCart = ref(false)
 
 const activeFilters = ref({
     ingredienti: [] as string[],
@@ -85,9 +89,17 @@ const groupedByMacro = computed(() => {
     return groups
 })
 
+async function getCart() {
+    const cart = await cartStore.getOrdineByTurno()
+    console.log('cart', cart)
+    haveCart.value = cart === true
+}
+
 const onResize = () => isMobile.value = window.innerWidth <= 768
 onMounted(() => window.addEventListener('resize', onResize))
 onUnmounted(() => window.removeEventListener('resize', onResize))
+
+getCart()
 </script>
 
 <template>
@@ -125,7 +137,7 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
             <!-- Mobile view -->
             <CardGrid v-if="isMobile" :minWidth="'300px'">
                 <CardProdotto v-for="product in macroFilteredProducts" :key="product.id"
-                    v-bind="{ productId: product.id }" />
+                    v-bind="{ productId: product.id }" :disabled="haveCart"/>
             </CardGrid>
 
             <!-- Desktop view -->
@@ -134,7 +146,7 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
                     <h2 v-if="products.length > 0" class="macro-title">{{ macro }}</h2>
                     <CardGrid :minWidth="'280px'">
                         <CardProdotto v-for="product in products" :key="product.id"
-                            v-bind="{ ...product, productId: product.id }" />
+                            v-bind="{ ...product, productId: product.id }" :disabled="haveCart"/>
                     </CardGrid>
                 </div>
             </template>
