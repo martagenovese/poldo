@@ -483,7 +483,7 @@ export default {
 .title {
   font-size: 24px;
   margin-bottom: 20px;
-  color: #333;
+  color: var(--poldo-text);
 }
 
 .filters-container {
@@ -492,7 +492,7 @@ export default {
   gap: 15px;
   margin-bottom: 20px;
   padding: 15px;
-  background-color: #f5f5f5;
+  background-color: var(--poldo-card-bg);
   border-radius: 8px;
 }
 
@@ -534,9 +534,8 @@ export default {
 .export-container {
   width: 300px;
   padding: 15px;
-  border: 1px solid #eee;
   border-radius: 8px;
-  background-color: white;
+  background-color: var(--poldo-card-bg);
 }
 
 .summary-card {
@@ -556,6 +555,7 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  padding-top: 10px;
 }
 
 .btn {
