@@ -3,6 +3,8 @@ import HomeView from '../views/HomeView.vue'
 import ProdottiView from '../views/ProdottiView.vue'
 import CarrelloView from '../views/CarrelloView.vue'
 import { useTurnoStore } from '../stores/turno'
+import AuthView from '@/views/AuthView.vue'
+import ReportsView from '@/views/bar/ReportsView.vue'
 import NewProdottiView from '../views/Gestione/NewProdottiView.vue'
 import ModificaView from '../views/Gestione/ProdottiView.vue'
 
@@ -35,6 +37,16 @@ const router = createRouter({
       path: '/gestione/prodotti',
       name: 'modificaProdotti',
       component: ModificaView,
+    },
+    {
+      path: '/autenticazione',
+      name: 'autenticazione',
+      component: AuthView
+    },
+    {
+      path: '/reports',
+      name: 'reports',
+      component: ReportsView
     }
   ],
 })

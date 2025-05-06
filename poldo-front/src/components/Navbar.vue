@@ -55,7 +55,7 @@ const navigate = (path: string, requiresTurno: boolean) => {
             <div class="title-container">
                 <div class="main-title">Poldo {{ pageTitle }}</div>
                 <div
-                    v-if="hasSelectedTurno"
+                    v-if="turnoStore.turnoSelezionato && route.path !== '/autenticazione'"
                     class="turno-subtitle"
                 >
                     {{ turnoStore.turnoSelezionato === 'primo' ? 'Primo Turno' : 'Secondo Turno' }}
@@ -98,7 +98,7 @@ const navigate = (path: string, requiresTurno: boolean) => {
 </template>
 
 <style>
-/* Stile mantenuto invariato come richiesto */
+
 .navbar {
     height: 70px;
     width: 100%;
