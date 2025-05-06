@@ -16,7 +16,7 @@ export interface Product {
 
 const API_CONFIG = {
     BASE_URL: '/api',
-    TOKEN: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NDksInJ1b2xvIjoic3R1ZGVudGUiLCJpYXQiOjE3NDQzMDc3NjksImV4cCI6MTc3NTg2NTM2OX0.mdqnDVZpEotkEEXMaCj9f-rfYBx_b4WeJr97g3L6MP8",
+    TOKEN: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTAsInJ1b2xvIjoicGFuaW5hcm8iLCJpYXQiOjE3NDQzMDc2ODgsImV4cCI6MTc3NTg2NTI4OH0.noyJJ5yLRAdZ4bxIOGdlYBjSZQElmXV4KOqGGVJHl_Q",
     DEFAULT_IMAGE: "https://lh3.googleusercontent.com/a/ACg8ocLPv09a9-uNbEG-ZfRm5bWQUlyLOpBaKxHz88de_c6vB8RvQ_Plrg=s96-c"
   }
 
@@ -27,8 +27,6 @@ const API_CONFIG = {
   })
 
 const fetchProducts = async (): Promise<Product[]> => {
-
-
   const response = await fetch('http://figliolo.it:5005/v1/prodotti', { headers })
   if (!response.ok) throw new Error('Network response was not ok')
 
