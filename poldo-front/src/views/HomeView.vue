@@ -6,8 +6,16 @@ import { useTurnoStore } from '@/stores/turno'
 // Use the central turno store
 const turnoStore = useTurnoStore()
 
+onMounted(() => {
+  turnoStore.fetchTurni()
+  console.log('Turni fetched:', turnoStore.turni)
+})
+
+const turni = turnoStore.turni
+
 // Method for handling turno selection
-const selezionaTurno = (turno: string) => {
+const selezionaTurno = (turno: number) => {
+    console.log('Selected turno:', turno)
     turnoStore.selectTurno(turno)
 }
 </script>
@@ -15,13 +23,12 @@ const selezionaTurno = (turno: string) => {
 <template>
     <div class="home">
         <div class="turni-container">
-            <CardTurno title="Primo Turno" timeRangeOrder="10:30 - 11:15" timeRangeTake="11:15 - 12:00"
-                :isSelected="turnoStore.turnoSelezionato === 'primo'"
-                :isOtherSelected="turnoStore.turnoSelezionato === 'secondo'" @select="selezionaTurno('primo')" />
-
-            <CardTurno title="Secondo Turno" timeRangeOrder="11:30 - 12:15" timeRangeTake="12:15 - 13:00"
-                :isSelected="turnoStore.turnoSelezionato === 'secondo'"
-                :isOtherSelected="turnoStore.turnoSelezionato === 'primo'" @select="selezionaTurno('secondo')" />
+            <CardTurno v-for="turno in turni" :key="turno.n"
+                :title="turno.nome" :timeRangeOrder="turno.oraInizio + ' - ' + turno.oraFine"
+                :timeRangeTake="turno.inizioRitiro + ' - ' + turno.fineRitiro"
+                :isSelected="turnoStore.turnoSelezionato === turno.n"
+                :isOtherSelected="turnoStore.turnoSelezionato !== turno.n"
+                @select="selezionaTurno(turno.n)" />
         </div>
     </div>
 </template>
