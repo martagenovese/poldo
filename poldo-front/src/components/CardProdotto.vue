@@ -4,9 +4,16 @@ import { useFavoritesStore } from '@/stores/favorites'
 import QuantityControl from './ControlloQuantitaProdotto.vue'
 import { useProductsStore } from '@/stores/products'
 
-const props = defineProps<{
-    productId: number
-}>()
+const props = defineProps({
+    productId: {
+        type: Number,
+        required: true
+    },
+    disabled: {
+        type: Boolean,
+        default: false
+    }
+})
 
 const product = {
     ...useProductsStore().getProductById(props.productId),
@@ -18,7 +25,6 @@ const isFlipped = ref(false)
 const isFavorited = ref(false)
 
 const id = ref(props.productId)
-console.log('ID:', id.value)
 
 onMounted(() => {
     isFavorited.value = favoritesStore.isFavorite(id.value)
@@ -88,6 +94,7 @@ const handleTouchMove = (event: TouchEvent) => {
 
                     <QuantityControl 
                         :product-id="id"
+                        :disabled="props.disabled"
                          />
                 </div>
             </div>
