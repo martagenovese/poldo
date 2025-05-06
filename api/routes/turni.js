@@ -11,7 +11,7 @@ function getQueryTurni(ruolo, giorno) {
 }
 
 
-router.get('/', authenticateJWT, async (req, res) => {
+router.get('/', authenticateJWT, authorizeRole(['admin', 'gestore']), async (req, res) => {
     const connection = await pool.getConnection();
     try {
         const [rows] = await connection.query(getQueryTurni(req.user.ruolo, req.query.giorno), [req.query.giorno]);

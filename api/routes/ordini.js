@@ -281,7 +281,7 @@ router.post('/',
             }
 
             let nTurno;
-            if (userRole === 'studente') {
+            if (userRole === 'studente' || userRole === 'paninaro') {
                 nTurno = parseInt(bodyTurno, 10);
                 if (![1, 2].includes(nTurno)) {
                     await connection.rollback();
