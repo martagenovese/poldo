@@ -5,12 +5,12 @@ import QuantityControl from './ControlloQuantitaProdotto.vue'
 import { useProductsStore } from '@/stores/products'
 
 const props = defineProps<{
-    productId: number
+  productId: number
 }>()
 
 const product = {
-    ...useProductsStore().getProductById(props.productId),
-    disableFlip: false,
+  ...useProductsStore().getProductById(props.productId),
+  disableFlip: false,
 }
 
 const favoritesStore = useFavoritesStore()
@@ -18,361 +18,374 @@ const isFlipped = ref(false)
 const isFavorited = ref(false)
 
 const id = ref(props.productId)
-console.log('ID:', id.value)
 
 onMounted(() => {
-    isFavorited.value = favoritesStore.isFavorite(id.value)
+  isFavorited.value = favoritesStore.isFavorite(id.value)
 })
 
 const toggleFavorite = () => {
-    isFavorited.value = !isFavorited.value
-    isFavorited.value
-        ? favoritesStore.addFavorite(id.value)
-        : favoritesStore.removeFavorite(id.value)
+  isFavorited.value = !isFavorited.value
+  isFavorited.value
+    ? favoritesStore.addFavorite(id.value)
+    : favoritesStore.removeFavorite(id.value)
 }
 
 // Gestione flip card
 const flipCard = (event: Event) => {
-    if (product.disableFlip) return
-    if (!(event.target as HTMLElement).closest('.quantity-controls')) {
-        isFlipped.value = !isFlipped.value
-    }
+  if (product.disableFlip) return
+  if (!(event.target as HTMLElement).closest('.quantity-controls')) {
+    isFlipped.value = !isFlipped.value
+  }
 }
 
 const handleScroll = (event: WheelEvent) => {
-    event.preventDefault()
-    const delta = Math.sign(event.deltaY)
-    const container = event.currentTarget as HTMLElement
-    container.scrollTop += delta * 20
+  event.preventDefault()
+  const delta = Math.sign(event.deltaY)
+  const container = event.currentTarget as HTMLElement
+  container.scrollTop += delta * 20
 }
 
 let touchStartY = 0
 const handleTouchStart = (event: TouchEvent) => {
-    touchStartY = event.touches[0].clientY
+  touchStartY = event.touches[0].clientY
 }
 
 const handleTouchMove = (event: TouchEvent) => {
-    const touchY = event.touches[0].clientY
-    const delta = touchStartY - touchY
-    const container = event.currentTarget as HTMLElement
-    container.scrollTop += delta
-    touchStartY = touchY
+  const touchY = event.touches[0].clientY
+  const delta = touchStartY - touchY
+  const container = event.currentTarget as HTMLElement
+  container.scrollTop += delta
+  touchStartY = touchY
 }
 </script>
 
 <template>
-    <div class="card-container" :class="{ 'clickable': !product.disableFlip }" @click="flipCard">
-        <div class="card-wrapper" :class="{ 'is-flipped': isFlipped }">
-            <!-- Front Side -->
-            <div class="card-side card-front">
-                <div class="card-prodotto">
-                    <button class="favorite-btn" @click.stop="toggleFavorite">
-                        <svg v-if="isFavorited" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                            viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5">
-                            <path
-                                d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                        </svg>
-                        <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                            fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path
-                                d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                        </svg>
-                    </button>
+  <div class="card-container" :class="{ 'clickable': !product.disableFlip }" @click="flipCard">
+    <div class="card-wrapper" :class="{ 'is-flipped': isFlipped }">
+      <!-- Front Side -->
+      <div class="card-side card-front">
+        <div class="card-prodotto">
+          <button class="favorite-btn" @click.stop="toggleFavorite">
+            <svg v-if="isFavorited" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+              fill="currentColor" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+            </svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="1.5">
+              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+            </svg>
+          </button>
 
-                    <img :src="product.imageSrc" alt="image" />
+          <div class="image-container">
+            <img :src="product.imageSrc" alt="image" class="product-image" />
+          </div>
 
-                    <div class="info">
-                        <h3 class="title">{{ product.title }}</h3>
-                        <div v-if="product.price !== undefined" class="price">€{{ product.price.toFixed(2) }}</div>
-                    </div>
+          <div class="info">
+            <h3 class="title">{{ product.title }}</h3>
+            <div v-if="product.price !== undefined" class="price">€{{ product.price.toFixed(2) }}</div>
+          </div>
 
-                    <QuantityControl 
-                        :product-id="id"
-                         />
-                </div>
-            </div>
-
-            <!-- Back Side -->
-            <div class="card-side card-back">
-                <h3 class="title">{{ product.title }}</h3>
-                <div class="scroll">
-                    <div class="descr">
-
-                        <!-- <div v-if="price !== undefined" class="price">€{{ price.toFixed(2) }}</div> -->
-
-                        <div class="details" @wheel.stop="handleScroll" @touchstart="handleTouchStart"
-                            @touchmove.stop="handleTouchMove">
-                            <div class="description-section">
-                                <h4>Descrizione</h4>
-                                <p>{{ product.description || 'Nessuna descrizione disponibile' }}</p>
-                            </div>
-
-                            <div class="ingredients-section">
-                                <h4>Ingredienti</h4>
-                                <ul v-if="product.ingredients && product.ingredients.length > 0">
-                                    <li v-for="(ingredient, index) in product.ingredients" :key="index">
-                                        {{ ingredient }}
-                                    </li>
-                                </ul>
-                                <p v-else>Nessun ingrediente disponibile</p>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
+          <QuantityControl :product-id="id" />
         </div>
+      </div>
+
+      <!-- Back Side -->
+      <div class="card-side card-back">
+        <h3 class="title">{{ product.title }}</h3>
+        <div class="scroll">
+          <div class="descr">
+
+            <!-- <div v-if="price !== undefined" class="price">€{{ price.toFixed(2) }}</div> -->
+
+            <div class="details" @wheel.stop="handleScroll" @touchstart="handleTouchStart"
+              @touchmove.stop="handleTouchMove">
+              <div class="description-section">
+                <h4>Descrizione</h4>
+                <p>{{ product.description || 'Nessuna descrizione disponibile' }}</p>
+              </div>
+
+              <div class="ingredients-section">
+                <h4>Ingredienti</h4>
+                <ul v-if="product.ingredients && product.ingredients.length > 0">
+                  <li v-for="(ingredient, index) in product.ingredients" :key="index">
+                    {{ ingredient }}
+                  </li>
+                </ul>
+                <p v-else>Nessun ingrediente disponibile</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
+  </div>
 </template>
 
 <style scoped>
 .card-container {
-    width: 100%;
-    max-width: 400px;
-    height: 175px;
-    outline: none;
-    user-select: none;
+  width: 100%;
+  max-width: 400px;
+  height: 175px;
+  outline: none;
+  user-select: none;
 }
 
 .card-container.clickable {
-    cursor: pointer;
+  cursor: pointer;
 }
 
 .card-wrapper {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    transition: transform 0.8s;
-    transform-style: preserve-3d;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.8s;
+  transform-style: preserve-3d;
 }
 
 .card-wrapper.is-flipped {
-    transform: rotateY(180deg);
+  transform: rotateY(180deg);
 }
 
 .card-front {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    border-radius: 20px;
-    background-color: var(--card-bg);
-    box-shadow: 0 2px 8px var(--card-shadow);
-    z-index: 1;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 20px;
+  background-color: var(--card-bg);
+  box-shadow: 0 2px 8px var(--card-shadow);
+  z-index: 1;
 }
 
 .card-back {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    border-radius: 20px;
-    background-color: var(--card-bg);
-    box-shadow: 0 2px 8px var(--card-shadow);
-    transform: rotateY(180deg);
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 20px;
+  background-color: var(--card-bg);
+  box-shadow: 0 2px 8px var(--card-shadow);
+  transform: rotateY(180deg);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .scroll {
-    flex: 1;
-    min-height: 0;
+  flex: 1;
+  min-height: 0;
 }
 
 .card-wrapper.is-flipped .card-back {
-    pointer-events: auto;
+  pointer-events: auto;
 }
 
 .card-back .card-prodotto,
 .card-back .details,
 .card-back .quantity-controls {
-    pointer-events: auto;
+  pointer-events: auto;
 }
 
 /* Card content */
 .card-prodotto {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 16px;
+  position: relative;
+}
+
+.image-container {
+    flex-shrink: 0;
+    width: 100px;
+    height: 100px;
+    border-radius: 2.25vmax;
+    overflow: hidden;
+    position: relative;
+    margin-right: 16px;
+    background: var(--color-background-soft);
+}
+
+.product-image {
     width: 100%;
     height: 100%;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    padding: 16px;
-    position: relative;
+    object-fit: contain;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 5px;
+    border-radius: 2.25vmax;
 }
-
-.card-prodotto>img {
-    border-radius: 15px;
-    height: 100px;
-    width: 100px;
-}
-
 
 .info {
-    text-align: center;
-    width: 100%;
+  text-align: center;
+  width: 100%;
 }
 
 .title {
-    font-size: 1.2rem;
-    margin: 0;
-    color: var(--poldo-primary);
-    font-weight: bold;
-    text-align: center;
+  font-size: 1.2rem;
+  margin: 0;
+  color: var(--poldo-primary);
+  font-weight: bold;
+  text-align: center;
 }
 
 .card-back .title {
-    font-size: 1.5rem;
-    margin: 0;
-    background-color: var(--poldo-primary);
-    color: white;
-    width: 100%;
-    font-weight: bold;
+  font-size: 1.5rem;
+  margin: 0;
+  background-color: var(--poldo-primary);
+  color: white;
+  width: 100%;
+  font-weight: bold;
 }
 
 .short-description {
-    font-size: 0.95rem;
-    color: var(--color-text);
-    margin-top: 5px;
+  font-size: 0.95rem;
+  color: var(--color-text);
+  margin-top: 5px;
 }
 
 .price {
-    font-size: 1.1rem;
-    color: var(--poldo-text);
+  font-size: 1.1rem;
+  color: var(--poldo-text);
 }
 
 .descr {
-    overflow-y: auto;
-    height: 100%;
-    box-sizing: border-box;
-    padding: 5px 10px;
+  overflow-y: auto;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 5px 10px;
 }
 
 /* Back side specific styles */
 .details {
-    height: auto;
-    padding-right: 5px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+  height: auto;
+  padding-right: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
 /* Custom scrollbar styling */
 .details::-webkit-scrollbar {
-    width: 5px;
+  width: 5px;
 }
 
 
 .ingredients-section ul {
-    padding-left: 20px;
-    margin: 5px 0;
+  padding-left: 20px;
+  margin: 5px 0;
 }
 
 .ingredients-section li {
-    font-size: 0.9rem;
-    margin-bottom: 2px;
+  font-size: 0.9rem;
+  margin-bottom: 2px;
 }
 
 .description-section p {
-    font-size: 0.9rem;
-    line-height: 1.3;
-    margin: 5px 0;
+  font-size: 0.9rem;
+  line-height: 1.3;
+  margin: 5px 0;
 }
 
 .description-section h4,
 .ingredients-section h4 {
-    margin: 0 0 5px 0;
-    font-size: 1rem;
-    color: var(--poldo-primary);
+  margin: 0 0 5px 0;
+  font-size: 1rem;
+  color: var(--poldo-primary);
 }
 
 /* Quantity controls */
 .quantity-controls {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    z-index: 2;
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 2;
 }
 
 .quantity-btn {
-    width: 25px;
-    height: 25px;
-    border-radius: 50%;
-    border: none;
-    color: var(--poldo-text);
-    font-size: 1.2rem;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    padding: 0;
-    line-height: 0;
-    transition: background-color 0.2s;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  border: none;
+  color: var(--poldo-text);
+  font-size: 1.2rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  line-height: 0;
+  transition: background-color 0.2s;
 }
 
 .quantity-btn.plus {
-    background-color: var(--poldo-green);
+  background-color: var(--poldo-green);
 }
 
 .quantity-btn.minus {
-    background-color: var(--poldo-red);
+  background-color: var(--poldo-red);
 }
 
 .quantity-btn.minus.disabled {
-    background-color: var(--disabled);
-    cursor: not-allowed;
+  background-color: var(--disabled);
+  cursor: not-allowed;
 }
 
 .quantity-btn.delete {
-    background-color: var(--poldo-accent);
-    color: var(--poldo-text);
+  background-color: var(--poldo-accent);
+  color: var(--poldo-text);
 }
 
 .quantity-btn.delete:hover {
-    background-color: var(--poldo-primary);
+  background-color: var(--poldo-primary);
 }
 
 .quantity {
-    font-size: 1.1rem;
-    font-weight: bold;
-    min-width: 20px;
-    text-align: center;
+  font-size: 1.1rem;
+  font-weight: bold;
+  min-width: 20px;
+  text-align: center;
 }
 
 .favorite-btn {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    background: none;
-    border: none;
-    padding: 4px;
-    cursor: pointer;
-    z-index: 2;
-    color: var(--poldo-accent);
-    transition: all 0.2s ease;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  z-index: 2;
+  color: var(--poldo-accent);
+  transition: all 0.2s ease;
 }
 
 .favorite-btn:hover {
-    transform: scale(1.1);
-    color: var(--poldo-primary);
+  transform: scale(1.1);
+  color: var(--poldo-primary);
 }
 
 .favorite-btn svg {
-    width: 24px;
-    height: 24px;
+  width: 24px;
+  height: 24px;
 }
 
 @media (prefers-color-scheme: dark) {
 
-    .short-description,
-    .description-section p {
-        color: var(--poldo-text);
-    }
+  .short-description,
+  .description-section p {
+    color: var(--poldo-text);
+  }
 }
 </style>

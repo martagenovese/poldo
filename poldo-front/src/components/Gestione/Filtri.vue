@@ -1,69 +1,11 @@
-<template>
-  <div>
-    <div ref="filtriContainer" class="filters-container">
-      <div class="filters-content">
-        <!-- Sezione Ingredienti -->
-        <div class="filter-section">
-          <div class="section-header">
-            <h4 class="subtitle">Ingredienti</h4>
-          </div>
-          <div class="inline-list">
-            <div v-for="ingredient in visibleIngredients" :key="ingredient.originalName" class="inline-item"
-              :class="{ 'not-used': !usedIngredients.includes(ingredient.originalName) }">
-              <div class="editable-wrapper">
-                <input type="text" v-model="ingredient.currentName" :readonly="!ingredient.editing"
-                  @blur="onIngredientBlur(ingredient)" class="compact-input" :ref="setIngredientRef(ingredient)" />
-                <!-- Penna per abilitare la modifica -->
-                <button v-if="!ingredient.editing" @click="startEditing('ingredient', ingredient)" class="edit-btn"
-                  title="Modifica">
-                  ✎
-                </button>
-                <!-- Reset e punto di pending change -->
-                <button v-if="hasPendingChange('ingredient', ingredient)" @click="resetFilter('ingredient', ingredient)"
-                  class="reset-btn" title="Ripristina">↺</button>
-                <div v-if="hasPendingChange('ingredient', ingredient)" class="pending-dot"></div>
-              </div>
-            </div>
-            <div class="add-input compact">
-              <input v-model="newIngredient" placeholder="Nuovo..." @keyup.enter="addNewIngredient" />
-              <button @click="addNewIngredient">+</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Sezione Tag -->
-        <div class="filter-section">
-          <div class="section-header">
-            <h4 class="subtitle">Tag</h4>
-          </div>
-          <div class="inline-list">
-            <div v-for="tag in visibleTags" :key="tag.originalName" class="inline-item"
-              :class="{ 'not-used': !usedTags.includes(tag.originalName) }">
-              <div class="editable-wrapper">
-                <input type="text" v-model="tag.currentName" :readonly="!tag.editing" @blur="onTagBlur(tag)"
-                  class="compact-input" :ref="setTagRef(tag)" />
-                <!-- Penna per abilitare la modifica -->
-                <button v-if="!tag.editing" @click="startEditing('tag', tag)" class="edit-btn" title="Modifica">
-                  ✎
-                </button>
-                <!-- Reset e punto di pending change -->
-                <button v-if="hasPendingChange('tag', tag)" @click="resetFilter('tag', tag)" class="reset-btn"
-                  title="Ripristina">↺</button>
-                <div v-if="hasPendingChange('tag', tag)" class="pending-dot"></div>
-              </div>
-            </div>
-            <div class="add-input compact">
-              <input v-model="newTag" placeholder="Nuovo..." @keyup.enter="addNewTag" />
-              <button @click="addNewTag">+</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
+import { ref, computed, onMounted, nextTick, type ComponentPublicInstance } from 'vue'
+import type { PropType } from 'vue'
+import { useProductsStore } from '@/stores/products'
+import { useFiltersStore } from '@/stores/filters'
+import { usePendingChangesStore } from '@/stores/pendingChanges'
+import IconEdit from '@/components/icons/IconEdit.vue'
+
 defineProps({
   usedIngredients: {
     type: Array as PropType<string[]>,
@@ -75,11 +17,8 @@ defineProps({
   }
 })
 
-import { ref, computed, onMounted, nextTick } from 'vue'
-import { useProductsStore } from '@/stores/products'
-import { usePendingChangesStore } from '@/stores/pendingChanges'
-
 const productsStore = useProductsStore()
+const filtersStore = useFiltersStore()
 const pendingChangesStore = usePendingChangesStore()
 
 const filtriContainer = ref<HTMLElement | null>(null)
@@ -87,8 +26,8 @@ const newIngredient = ref('')
 const newTag = ref('')
 
 // Riferimenti agli input, per il focus
-const ingredientRefs = new Map<string, HTMLElement>()
-const tagRefs = new Map<string, HTMLElement>()
+const ingredientRefs = new Map<string, Element>()
+const tagRefs = new Map<string, Element>()
 
 interface PendingItem {
   originalName: string
@@ -102,23 +41,24 @@ type ChangeType = 'ingredient' | 'tag'
 const localIngredients = ref<PendingItem[]>([])
 const localTags = ref<PendingItem[]>([])
 
-// Computed Properties (invariate)
 const visibleIngredients = computed(() => {
   const deletions = pendingChangesStore.filterChanges
     .filter(c => c.type === 'ingredient' && c.action === 'delete')
     .map(c => c.name)
 
-  return localIngredients.value
+  const filteredLocal = localIngredients.value
     .filter(i => !deletions.includes(i.originalName))
-    .concat(
-      pendingChangesStore.filterChanges
-        .filter(c => c.type === 'ingredient' && c.action === 'create')
-        .map(c => ({
-          originalName: c.name,
-          currentName: c.name,
-          editing: false
-        }))
-    )
+
+  const newCreations = pendingChangesStore.filterChanges
+    .filter(c => c.type === 'ingredient' && c.action === 'create')
+    .map(c => ({
+      originalName: c.name,
+      currentName: c.name,
+      editing: false
+    }))
+
+  return [...filteredLocal, ...newCreations]
+    .sort((a, b) => a.currentName.localeCompare(b.currentName))
 })
 
 const visibleTags = computed(() => {
@@ -126,20 +66,21 @@ const visibleTags = computed(() => {
     .filter(c => c.type === 'tag' && c.action === 'delete')
     .map(c => c.name)
 
-  return localTags.value
+  const filteredLocal = localTags.value
     .filter(t => !deletions.includes(t.originalName))
-    .concat(
-      pendingChangesStore.filterChanges
-        .filter(c => c.type === 'tag' && c.action === 'create')
-        .map(c => ({
-          originalName: c.name,
-          currentName: c.name,
-          editing: false
-        }))
-    )
+
+  const newCreations = pendingChangesStore.filterChanges
+    .filter(c => c.type === 'tag' && c.action === 'create')
+    .map(c => ({
+      originalName: c.name,
+      currentName: c.name,
+      editing: false
+    }))
+
+  return [...filteredLocal, ...newCreations]
+    .sort((a, b) => a.currentName.localeCompare(b.currentName))
 })
 
-// Funzione per verificare se c'è una change in sospeso
 const hasPendingChange = (
   type: ChangeType,
   item: PendingItem
@@ -163,33 +104,41 @@ const hasPendingChange = (
 
 // Lifecycle
 onMounted(async () => {
-  await productsStore.initializeStore()
+  await Promise.all([
+    productsStore.initializeProducts(),
+    filtersStore.initializeFilters()
+  ])
   initLocalState()
 })
 
-// Inizializza lo stato locale
 const initLocalState = () => {
-  localIngredients.value = productsStore.allIngredients.map(name => ({
+  localIngredients.value = filtersStore.allIngredients.map(name => ({
     originalName: name,
     currentName: name,
     editing: false
   }))
-  localTags.value = productsStore.allTags.map(name => ({
+  localTags.value = filtersStore.allTags.map(name => ({
     originalName: name,
     currentName: name,
     editing: false
   }))
 }
 
-// Metodi di utilità per i ref
-const setIngredientRef = (item: PendingItem) => (el: HTMLElement) => {
-  if (el) ingredientRefs.set(item.originalName, el)
-}
-const setTagRef = (item: PendingItem) => (el: HTMLElement) => {
-  if (el) tagRefs.set(item.originalName, el)
-}
+// Metodi di utilità per i ref (firma corretta per Vue 3)
+const setIngredientRef = (item: PendingItem) =>
+  (el: Element | ComponentPublicInstance | null, _refs?: Record<string, any>) => {
+    if (el instanceof Element) {
+      ingredientRefs.set(item.originalName, el)
+    }
+  }
 
-// Avvia l’editing di un elemento
+const setTagRef = (item: PendingItem) =>
+  (el: Element | ComponentPublicInstance | null, _refs?: Record<string, any>) => {
+    if (el instanceof Element) {
+      tagRefs.set(item.originalName, el)
+    }
+  }
+
 const startEditing = async (
   type: ChangeType,
   item: PendingItem
@@ -198,22 +147,19 @@ const startEditing = async (
   await nextTick()
   const refMap = type === 'ingredient' ? ingredientRefs : tagRefs
   const el = refMap.get(item.originalName)
-  if (el) el.focus()
+  if (el) (el as HTMLElement).focus()
 }
 
-// Al termine del blur di un ingrediente
 const onIngredientBlur = (item: PendingItem) => {
   item.editing = false
   updateIngredient(item.originalName, item.currentName)
 }
 
-// Al termine del blur di un tag
 const onTagBlur = (item: PendingItem) => {
   item.editing = false
   updateTag(item.originalName, item.currentName)
 }
 
-// Aggiungi nuovo ingrediente
 const addNewIngredient = () => {
   if (newIngredient.value.trim()) {
     pendingChangesStore.addFilterChange({
@@ -222,11 +168,10 @@ const addNewIngredient = () => {
       name: newIngredient.value.trim()
     })
     newIngredient.value = ''
-    productsStore.refreshLists()
+    filtersStore.fetchIngredients()
   }
 }
 
-// Aggiungi nuovo tag
 const addNewTag = () => {
   if (newTag.value.trim()) {
     pendingChangesStore.addFilterChange({
@@ -235,11 +180,10 @@ const addNewTag = () => {
       name: newTag.value.trim()
     })
     newTag.value = ''
-    productsStore.refreshLists()
+    filtersStore.fetchTags()
   }
 }
 
-// Aggiorna ingrediente
 const updateIngredient = (oldVal: string, newVal: string) => {
   const name = newVal.trim()
   if (name && name !== oldVal) {
@@ -257,7 +201,6 @@ const updateIngredient = (oldVal: string, newVal: string) => {
   }
 }
 
-// Aggiorna tag
 const updateTag = (oldVal: string, newVal: string) => {
   const name = newVal.trim()
   if (name && name !== oldVal) {
@@ -275,7 +218,6 @@ const updateTag = (oldVal: string, newVal: string) => {
   }
 }
 
-// Reset di filtro
 const resetFilter = (
   type: ChangeType,
   item: PendingItem
@@ -288,6 +230,62 @@ const resetFilter = (
   })
 }
 </script>
+
+<template>
+  <div>
+    <div class="filters-content">
+      <!-- Sezione Ingredienti -->
+      <div class="filter-section">
+        <div class="section-header">
+          <h4 class="subtitle">Ingredienti</h4>
+        </div>
+        <div class="inline-list">
+          <div v-for="ingredient in visibleIngredients" :key="ingredient.originalName" class="inline-item"
+            :class="{ 'not-used': !usedIngredients.includes(ingredient.originalName) }">
+            <div class="editable-wrapper">
+              <input type="text" v-model="ingredient.currentName" :readonly="!ingredient.editing"
+                @blur="onIngredientBlur(ingredient)" class="compact-input" :ref="setIngredientRef(ingredient)" />
+              <button v-if="!ingredient.editing" @click="startEditing('ingredient', ingredient)" class="edit-btn"
+                title="Modifica"><IconEdit /></button>
+              <button v-if="hasPendingChange('ingredient', ingredient)" @click="resetFilter('ingredient', ingredient)"
+                class="reset-btn" title="Ripristina">↺</button>
+              <div v-if="hasPendingChange('ingredient', ingredient)" class="pending-dot"></div>
+            </div>
+          </div>
+          <div class="add-input compact">
+            <input v-model="newIngredient" placeholder="Nuovo..." @keyup.enter="addNewIngredient" />
+            <button @click="addNewIngredient">+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sezione Tag -->
+      <div class="filter-section">
+        <div class="section-header">
+          <h4 class="subtitle">Tag</h4>
+        </div>
+        <div class="inline-list">
+          <div v-for="tag in visibleTags" :key="tag.originalName" class="inline-item"
+            :class="{ 'not-used': !usedTags.includes(tag.originalName) }">
+            <div class="editable-wrapper">
+              <input type="text" v-model="tag.currentName" :readonly="!tag.editing" @blur="onTagBlur(tag)"
+                class="compact-input" :ref="setTagRef(tag)" />
+              <button v-if="!tag.editing" @click="startEditing('tag', tag)" class="edit-btn" title="Modifica"><IconEdit /></button>
+              <button v-if="hasPendingChange('tag', tag)" @click="resetFilter('tag', tag)" class="reset-btn"
+                title="Ripristina">↺</button>
+              <div v-if="hasPendingChange('tag', tag)" class="pending-dot"></div>
+            </div>
+          </div>
+          <div class="add-input compact">
+            <input v-model="newTag" placeholder="Nuovo..." @keyup.enter="addNewTag" />
+            <button @click="addNewTag">+</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</template>
 
 <style scoped>
 .subtitle {
@@ -305,11 +303,7 @@ const resetFilter = (
 .filters-content {
   height: 100%;
   overflow-y: auto;
-  padding: 0.3rem;
   align-content: center;
-}
-
-.filters-container {
   background: var(--color-background-soft);
   border-radius: 12px;
   padding: 20px;
@@ -318,11 +312,11 @@ const resetFilter = (
 .inline-list {
   display: flex;
   flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
   padding: 8px 0;
 }
 
-/* Contenitore di ogni pillola ingrediente/tag */
 .inline-item {
   position: relative;
   padding-right: 32px;
@@ -344,7 +338,6 @@ const resetFilter = (
   color: var(--color-text-mute);
 }
 
-/* Wrapper interno per input, penna e dot */
 .editable-wrapper {
   display: flex;
   align-items: center;
@@ -359,7 +352,6 @@ const resetFilter = (
   font-size: 0.9rem;
 }
 
-/* Icona “penna” per avviare l’editing */
 .edit-btn {
   background: none;
   border: none;
@@ -368,7 +360,6 @@ const resetFilter = (
   color: var(--poldo-text);
 }
 
-/* Punto blu che indica modifiche pendenti */
 .pending-dot {
   position: absolute;
   top: 0px;
@@ -379,7 +370,6 @@ const resetFilter = (
   border-radius: 50%;
 }
 
-/* Pulsante “+” e input per aggiunta */
 .add-input.compact {
   display: flex;
   gap: 8px;
@@ -423,7 +413,6 @@ const resetFilter = (
   color: var(--poldo-accent);
 }
 
-/* Scrollbar personalizzata */
 .filters-content::-webkit-scrollbar {
   width: 6px;
 }

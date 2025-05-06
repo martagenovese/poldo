@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watchEffect } from 'vue'
-import { usePendingChangesStore } from '@/stores/pendingChanges'
 import { useProductsStore } from '@/stores/products'
+import { useFiltersStore } from '@/stores/filters'
+import { usePendingChangesStore } from '@/stores/pendingChanges'
+import IconEdit from '@/components/icons/IconEdit.vue'
 
 // Definizione delle proprietà del componente
 const props = defineProps<{
@@ -17,8 +19,9 @@ const props = defineProps<{
   isActive?: boolean
 }>()
 
-const pendingChangesStore = usePendingChangesStore()
 const productsStore = useProductsStore()
+const filtersStore = useFiltersStore()
+const pendingChangesStore = usePendingChangesStore()
 
 // Inizializzazione delle variabili locali
 const id = ref(props.productId || Math.floor(Math.random() * 10000))
@@ -94,6 +97,19 @@ const isFieldModified = (field: keyof typeof originalData.value): boolean => {
   return curr !== orig
 }
 
+const isImgModified = computed(() => !!imageFile.value)
+
+const resetImage = () => {
+  imageFile.value = null
+  localImageSrc.value = props.imageSrc
+  checkForChanges()
+}
+
+const isHoveringImg = ref(false)
+const imageFile = ref<File | null>(null)
+const localImageSrc = ref(props.imageSrc)
+const fileInput = ref<HTMLInputElement | null>(null)
+
 // Funzione per controllare le modifiche
 const checkForChanges = () => {
   const currentData = {
@@ -102,13 +118,28 @@ const checkForChanges = () => {
     description: localDescription.value,
     ingredients: localIngredients.value,
     tags: localTags.value,
-    isActive: localIsActive.value
+    isActive: localIsActive.value,
+    imageFile: imageFile.value
   }
 
-  if (JSON.stringify(currentData) === JSON.stringify(originalData.value)) {
-    pendingChangesStore.removeProductChange(id.value)
-  } else {
+  const hasChanges = JSON.stringify(currentData) !== JSON.stringify({
+    ...originalData.value,
+    imageFile: null
+  }) || imageFile.value !== null
+
+  if (hasChanges) {
     pendingChangesStore.addProductChange(id.value, currentData)
+  } else {
+    pendingChangesStore.removeProductChange(id.value)
+  }
+}
+
+const handleImageUpload = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  if (input.files && input.files[0]) {
+    imageFile.value = input.files[0]
+    localImageSrc.value = URL.createObjectURL(imageFile.value)
+    checkForChanges()
   }
 }
 
@@ -182,27 +213,32 @@ const resetAll = () => {
     <div v-if="hasPendingChanges" class="pending-dot"></div>
 
     <div class="switch-container">
-      <button class="switch-btn" :class="{ active: localIsActive }"
+      <button class="switch-btn" :class="localIsActive ? 'active' : 'inactive'"
         @click="localIsActive = !localIsActive; checkForChanges()">
-        <span v-html="localIsActive ? '&#x2714;' : '&#x2718;'" class="icon"></span>
       </button>
     </div>
 
     <button class="edit-btn" @click.stop="openEditModal">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" stroke-width="2">
-        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-      </svg>
+      <IconEdit />
     </button>
 
     <div class="card-wrapper">
       <div class="card-side card-front">
         <div class="card-product">
-          <img :src="imageSrc" :alt="imageAlt" />
+          <button v-if="isImgModified" class="image-reset-btn reset-btn" @click.stop="resetImage" title="Ripristina immagine">
+              ↺
+          </button>
+          <div class="image-wrapper" @mouseover="isHoveringImg = true" @mouseleave="isHoveringImg = false"
+            @click="fileInput?.click()">
+            <img :src="localImageSrc" :alt="imageAlt" class="product-image" />
+            <div v-if="isHoveringImg" class="edit-overlay">
+              <IconEdit class="img-edit-icon"/>
+            </div>
+            <input type="file" ref="fileInput" accept="image/*" @change="handleImageUpload" style="display: none" />
+          </div>
           <div class="info">
-            <h3 class="title">{{ hasPendingChanges ? pendingChangesStore.productChanges[id].title : title }}</h3>
-            <div class="price">€{{ (hasPendingChanges ? pendingChangesStore.productChanges[id].price :
-              price)?.toFixed(2) }}</div>
+            <h3 class="title">{{ localTitle }}</h3>
+            <p class="price">{{ localPrice?.toFixed(2) }}€</p>
           </div>
         </div>
       </div>
@@ -248,7 +284,7 @@ const resetAll = () => {
           <div class="form-group">
             <label>Ingredienti:</label>
             <div class="ingredients-list">
-              <div v-for="ingredient in productsStore.allIngredients" :key="ingredient" class="ingredient-item">
+              <div v-for="ingredient in filtersStore.allIngredients" :key="ingredient" class="ingredient-item">
                 <input type="checkbox" :value="ingredient" v-model="localIngredients" />
                 {{ ingredient }}
               </div>
@@ -258,7 +294,7 @@ const resetAll = () => {
           <div class="form-group">
             <label>Tags:</label>
             <div class="tags-list">
-              <div v-for="tag in productsStore.allTags" :key="tag" class="tag-item">
+              <div v-for="tag in filtersStore.allTags" :key="tag" class="tag-item">
                 <input type="checkbox" :value="tag" v-model="localTags" />
                 {{ tag }}
               </div>
@@ -293,6 +329,7 @@ const resetAll = () => {
   border-radius: 20px;
   background-color: var(--card-bg);
   box-shadow: 0 2px 8px var(--card-shadow);
+  transition: filter 0.3s ease, opacity 0.3s ease;
 }
 
 .card-product {
@@ -305,10 +342,32 @@ const resetAll = () => {
   position: relative;
 }
 
-.card-product>img {
-  border-radius: 15px;
-  height: 100px;
+.image-wrapper {
+  flex-shrink: 0;
   width: 100px;
+  height: 100px;
+  border-radius: 2.25vmax;
+  overflow: hidden;
+  position: relative;
+  margin-right: 16px;
+  background: var(--color-background-soft);
+  transition: opacity 0.3s ease;
+}
+
+.image-wrapper:hover {
+  opacity: 0.8;
+}
+
+.product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 5px;
+  border-radius: 2.25vmax;
 }
 
 .info {
@@ -318,14 +377,16 @@ const resetAll = () => {
 
 .title {
   font-size: 1.2rem;
-  margin: 0;
+  margin: 0 0 8px 0;
   color: var(--poldo-primary);
   font-weight: bold;
 }
 
 .price {
   font-size: 1.1rem;
+  margin: 0;
   color: var(--poldo-text);
+  font-weight: 500;
 }
 
 .pending-dot {
@@ -339,6 +400,39 @@ const resetAll = () => {
   z-index: 3;
 }
 
+.edit-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2.25vmax;
+  cursor: pointer;
+}
+
+.img-edit-icon {
+  width: 4em !important;
+  height: 4em !important;
+  color: white;
+}
+
+.image-reset-btn {
+  position: absolute;
+  font-size: 2em !important;
+  font-weight: bold;
+  top: 27px;
+  left: 85px;
+  z-index: 2;
+}
+
+.image-wrapper:hover .edit-icon {
+  transform: scale(1.1);
+}
+
 .edit-btn {
   position: absolute;
   bottom: 10px;
@@ -347,8 +441,10 @@ const resetAll = () => {
   border: none;
   padding: 5px;
   cursor: pointer;
-  z-index: 2;
+  z-index: 1;
   color: var(--poldo-text);
+  font-size: 1.5rem;
+  transition: opacity 0.3s ease;
 }
 
 .edit-modal {
@@ -479,56 +575,29 @@ input[type="checkbox"]:checked {
 
 .switch-container {
   position: absolute;
-  top: 5px;
-  right: 5px;
-  z-index: 3;
+  top: 15px;
+  right: 15px;
   display: flex;
   background: var(--color-background-soft);
   border-radius: 50px;
-  padding: 3px;
-  box-shadow: 0 2px 8px var(--poldo-card-shadow);
 }
 
 .switch-btn {
   display: flex;
-  align-items: center;
-  padding: 5px 10px;
+  padding: 10px;
   border: none;
   border-radius: 50px;
-  background: none;
   cursor: pointer;
   transition: all 0.3s ease;
-  gap: 4px;
-}
-
-.switch-btn span:not(.icon) {
-  text-transform: capitalize;
-  font-weight: 500;
-  color: var(--poldo-text);
-  transition: color 0.3s ease;
-  font-size: 0.8rem;
+  z-index: 1;
 }
 
 .switch-btn.active {
   background: var(--poldo-primary);
-  box-shadow: 0 2px 8px rgba(239, 194, 12, 0.3);
 }
 
-.switch-btn.active :deep(svg) {
-  stroke: var(--poldo-background);
-}
-
-.switch-btn.active span:not(.icon) {
-  color: var(--poldo-background);
-}
-
-.icon :deep(svg) {
-  width: 18px;
-  height: 18px;
-  stroke: var(--poldo-text);
-  stroke-width: 1.5;
-  fill: none;
-  transition: stroke 0.3s ease;
+.switch-btn.inactive {
+  background: var(--disabled);
 }
 
 /* Stile per card inattiva */
@@ -558,6 +627,11 @@ input[type="checkbox"]:checked {
 @media (max-width: 480px) {
   .modal-content {
     padding: 1rem;
+  }
+
+  .edit-icon {
+    width: 24px;
+    height: 24px;
   }
 }
 </style>

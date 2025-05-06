@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { useProductsStore } from '@/stores/products'
 import { useRouter } from 'vue-router'
+import { useProductsStore } from '@/stores/products'
+import { useFiltersStore } from '@/stores/filters'
 import { usePendingChangesStore } from '@/stores/pendingChanges'
 
 import CardGrid from '@/components/CardGrid.vue'
@@ -11,6 +12,7 @@ import SearchBar from '@/components/SearchBar.vue'
 
 const router = useRouter()
 const productsStore = useProductsStore()
+const filtersStore = useFiltersStore()
 const pendingChangesStore = usePendingChangesStore()
 const searchQuery = ref('')
 
@@ -31,11 +33,6 @@ const usedTags = computed(() => {
   filteredProducts.value.forEach(p => p.tags.forEach(t => tags.add(t)))
   return Array.from(tags)
 })
-
-const maxPrice = computed(() => Math.max(
-  ...productsStore.products.map(p => p.price),
-  0
-))
 
 // Filters handling
 const activeFilters = ref({
@@ -149,7 +146,7 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
     </div>
 
     <div class="main-layout">
-      <Filtri class="filters-panel" :ingredients="productsStore.allIngredients" :tags="productsStore.allTags"
+      <Filtri :ingredients="filtersStore.allIngredients" :tags="filtersStore.allTags"
         :used-ingredients="usedIngredients" :used-tags="usedTags" @filters-applied="handleFiltersApplied" />
 
       <div class="prodotti-container">
@@ -196,8 +193,11 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
 .main-layout {
   flex: 1;
   display: flex;
+  flex-direction: row;
   gap: 20px;
+  height: calc(100% - 60px);
   min-height: 0;
+  overflow: hidden;
 }
 
 .filters-panel {
@@ -207,6 +207,7 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
   border-radius: 12px;
   padding: 20px;
   overflow-y: auto;
+  height: 100%;
 }
 
 .prodotti-container {
@@ -214,6 +215,7 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
   min-width: 0;
   overflow-y: auto;
   padding-right: 10px;
+  height: 100%;
 }
 
 .search-bar-wrapper {
@@ -324,7 +326,8 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s ease;
+  transition: transform 0.3s ease;
+  z-index: 5;
 }
 
 .add-button:not(.disabled):hover {
