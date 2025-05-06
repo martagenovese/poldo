@@ -191,6 +191,81 @@ router.get('/classi',
     }
 );
 
+router.get('/classi/me/oggi',
+    authenticateJWT,
+    authorizeRole(['paninaro']),
+    async (req, res) => {
+        const connection = await pool.getConnection();
+        try {
+            const { nTurno } = req.query;
+            const giorniEnum = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
+            const giorno = giorniEnum[new Date().getDay()];
+            if (!nTurno) {
+                return res.status(400).json({ error: 'Parametro nTurno obbligatorio' });
+            }
+    
+            // Recupera la classe del paninaro
+            const [classePaninaro] = await connection.query(
+                'SELECT classe FROM Utente WHERE idUtente = ?',
+                [req.user.id]
+            );
+            
+            if (!classePaninaro[0]?.classe) {
+                return res.status(403).json({ error: 'Nessuna classe assegnata' });
+            }
+    
+            const query = `
+                SELECT
+                    os.idOrdine,
+                    os.user,
+                    u.nome AS nomeUtente,
+                    JSON_ARRAYAGG(
+                        JSON_OBJECT(
+                            'idProdotto', p.idProdotto,
+                            'nome', p.nome,
+                            'quantita', dos.quantita,
+                            'prezzo', p.prezzo
+                        )
+                    ) AS prodotti
+                FROM OrdineSingolo os
+                JOIN Utente u ON os.user = u.idUtente
+                JOIN DettagliOrdineSingolo dos ON os.idOrdine = dos.idOrdineSingolo
+                JOIN Prodotto p ON dos.idProdotto = p.idProdotto
+                WHERE u.classe = ?
+                AND os.data = CURDATE()
+                AND os.nTurno = ? and giorno = ?
+                GROUP BY os.idOrdine, os.user, u.nome
+                ORDER BY os.idOrdine DESC
+            `;
+    
+            const [orders] = await connection.execute(query, [
+                classePaninaro[0].classe,
+                nTurno, giorno
+            ]);
+    
+            if (orders.length === 0) {
+                return res.status(404).json({ error: 'Nessun ordine trovato per oggi in questo turno' });
+            }
+    
+            const formattedOrders = orders.map(order => ({
+                idOrdine: order.idOrdine,
+                user: {
+                    id: order.user,
+                    nome: order.nomeUtente
+                },
+                prodotti: order.prodotti
+            }));
+    
+            res.json(formattedOrders);
+    
+        } catch (error) {
+            console.error('Errore nel recupero ordini della classe per oggi:', error);
+            res.status(500).json({ error: 'Errore del database' });
+        } finally {
+            connection.release();
+        }
+    });
+
 // Ottieni i propri ordini
 router.get('/me',
     authenticateJWT,
@@ -484,7 +559,6 @@ router.put('/classi/me/conferma',
             const today = new Date().toISOString().split('T')[0];
             const giorniEnum = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
             const giorno = giorniEnum[new Date().getDay()];
-
             const [classePaninaro] = await connection.query(
                 'SELECT classe FROM Utente WHERE idUtente = ?',
                 [paninaroId]
