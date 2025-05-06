@@ -20,6 +20,18 @@ const hasPendingChanges = computed(() =>
   pendingChangesStore.filterChanges.length > 0
 )
 
+const usedIngredients = computed(() => {
+  const ingredients = new Set<string>()
+  filteredProducts.value.forEach(p => p.ingredients.forEach(i => ingredients.add(i)))
+  return Array.from(ingredients)
+})
+
+const usedTags = computed(() => {
+  const tags = new Set<string>()
+  filteredProducts.value.forEach(p => p.tags.forEach(t => tags.add(t)))
+  return Array.from(tags)
+})
+
 const maxPrice = computed(() => Math.max(
   ...productsStore.products.map(p => p.price),
   0
@@ -138,7 +150,7 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
 
     <div class="main-layout">
       <Filtri class="filters-panel" :ingredients="productsStore.allIngredients" :tags="productsStore.allTags"
-        :max-price="maxPrice" @filters-applied="handleFiltersApplied" />
+        :used-ingredients="usedIngredients" :used-tags="usedTags" @filters-applied="handleFiltersApplied" />
 
       <div class="prodotti-container">
         <div v-if="searchResults.length === 0" class="no-results">
