@@ -41,14 +41,12 @@ const router = createRouter({
     {
       path: '/autenticazione',
       name: 'autenticazione',
-      component: AuthView,
-      meta: { requiresTurno: false }
+      component: AuthView
     },
     {
       path: '/reports',
       name: 'reports',
-      component: ReportsView,
-      meta: { requiresTurno: false }
+      component: ReportsView
     }
   ],
 })
