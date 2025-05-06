@@ -406,98 +406,6 @@ router.post('/',
     }
 );
 
-// Ottieni ordini di classe raggruppati per nome di classe specifico
-router.get('/classi/:classe',
-    authenticateJWT,
-    authorizeRole(['admin', 'gestore']),
-    async (req, res) => {
-        const connection = await pool.getConnection();
-        try {
-            const { classe } = req.params;
-            const { startDate, endDate, nTurno } = req.query;
-
-            let query = `
-                SELECT
-                    oc.idOrdine AS idOrdineClasse,
-                    oc.data,
-                    oc.nTurno,
-                    oc.giorno,
-                    oc.confermato,
-                    oc.preparato,
-                    oc.oraRitiro,
-                    JSON_ARRAYAGG(
-                        JSON_OBJECT(
-                            'idOrdineSingolo', os.idOrdine,
-                            'user', os.user,
-                            'prodotti', (
-                                SELECT JSON_ARRAYAGG(
-                                    JSON_OBJECT(
-                                        'idProdotto', p.idProdotto,
-                                        'nome', p.nome,
-                                        'quantita', dos.totalQuantita,
-                                        'prezzo', p.prezzo
-                                    )
-                                )
-                                FROM (
-                                    SELECT dos.idProdotto, SUM(dos.quantita) AS totalQuantita
-                                    FROM DettagliOrdineSingolo dos
-                                    WHERE dos.idOrdineSingolo = os.idOrdine
-                                    GROUP BY dos.idProdotto
-                                ) dos
-                                JOIN Prodotto p ON dos.idProdotto = p.idProdotto
-                            )
-                        )
-                    ) AS ordiniSingoli
-                FROM OrdineClasse oc
-                JOIN OrdineSingolo os ON oc.idOrdine = os.idOrdineClasse
-                JOIN Classe c ON oc.classe = c.id
-                WHERE c.nome = ?
-            `;
-
-            const params = [classe];
-
-            if (startDate && endDate) {
-                query += ` AND oc.data BETWEEN ? AND ?`;
-                params.push(startDate, endDate);
-            } else if (!startDate && !endDate) {
-                query += ` AND oc.data = CURDATE()`;
-            }
-
-            if (nTurno) {
-                query += ` AND oc.nTurno = ?`;
-                params.push(nTurno);
-            }
-
-            query += ` 
-                GROUP BY 
-                    oc.idOrdine,
-                    oc.data,
-                    oc.nTurno,
-                    oc.giorno,
-                    oc.confermato,
-                    oc.preparato,
-                    oc.oraRitiro
-                ORDER BY oc.data DESC, oc.idOrdine DESC
-            `;
-
-            const [orders] = await connection.execute(query, params);
-
-            const result = orders.map(order => ({
-                ...order,
-                ordiniSingoli: parseJSON(order.ordiniSingoli)
-            }));
-
-            res.json(result);
-
-        } catch (error) {
-            console.error('Errore nel recuperare ordini per classe:', error);
-            res.status(500).json({ error: 'Errore del database nel recuperare ordini per classe.' });
-        } finally {
-            if (connection) connection.release();
-        }
-    }
-);
-
 // Ottieni tutti gli ordini per la classe del paninaro
 router.get('/classi/me',
     authenticateJWT,
@@ -634,6 +542,98 @@ router.put('/classi/me/conferma',
             res.status(500).json({ error: 'Errore del database' });
         } finally {
             connection.release();
+        }
+    }
+);
+
+// Ottieni ordini di classe raggruppati per nome di classe specifico
+router.get('/classi/:classe',
+    authenticateJWT,
+    authorizeRole(['admin', 'gestore']),
+    async (req, res) => {
+        const connection = await pool.getConnection();
+        try {
+            const { classe } = req.params;
+            const { startDate, endDate, nTurno } = req.query;
+
+            let query = `
+                SELECT
+                    oc.idOrdine AS idOrdineClasse,
+                    oc.data,
+                    oc.nTurno,
+                    oc.giorno,
+                    oc.confermato,
+                    oc.preparato,
+                    oc.oraRitiro,
+                    JSON_ARRAYAGG(
+                        JSON_OBJECT(
+                            'idOrdineSingolo', os.idOrdine,
+                            'user', os.user,
+                            'prodotti', (
+                                SELECT JSON_ARRAYAGG(
+                                    JSON_OBJECT(
+                                        'idProdotto', p.idProdotto,
+                                        'nome', p.nome,
+                                        'quantita', dos.totalQuantita,
+                                        'prezzo', p.prezzo
+                                    )
+                                )
+                                FROM (
+                                    SELECT dos.idProdotto, SUM(dos.quantita) AS totalQuantita
+                                    FROM DettagliOrdineSingolo dos
+                                    WHERE dos.idOrdineSingolo = os.idOrdine
+                                    GROUP BY dos.idProdotto
+                                ) dos
+                                JOIN Prodotto p ON dos.idProdotto = p.idProdotto
+                            )
+                        )
+                    ) AS ordiniSingoli
+                FROM OrdineClasse oc
+                JOIN OrdineSingolo os ON oc.idOrdine = os.idOrdineClasse
+                JOIN Classe c ON oc.classe = c.id
+                WHERE c.nome = ?
+            `;
+
+            const params = [classe];
+
+            if (startDate && endDate) {
+                query += ` AND oc.data BETWEEN ? AND ?`;
+                params.push(startDate, endDate);
+            } else if (!startDate && !endDate) {
+                query += ` AND oc.data = CURDATE()`;
+            }
+
+            if (nTurno) {
+                query += ` AND oc.nTurno = ?`;
+                params.push(nTurno);
+            }
+
+            query += ` 
+                GROUP BY 
+                    oc.idOrdine,
+                    oc.data,
+                    oc.nTurno,
+                    oc.giorno,
+                    oc.confermato,
+                    oc.preparato,
+                    oc.oraRitiro
+                ORDER BY oc.data DESC, oc.idOrdine DESC
+            `;
+
+            const [orders] = await connection.execute(query, params);
+
+            const result = orders.map(order => ({
+                ...order,
+                ordiniSingoli: parseJSON(order.ordiniSingoli)
+            }));
+
+            res.json(result);
+
+        } catch (error) {
+            console.error('Errore nel recuperare ordini per classe:', error);
+            res.status(500).json({ error: 'Errore del database nel recuperare ordini per classe.' });
+        } finally {
+            if (connection) connection.release();
         }
     }
 );
