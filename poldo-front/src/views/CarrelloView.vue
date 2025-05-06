@@ -3,19 +3,30 @@ import { useCartStore } from '@/stores/cart'
 import { useProductsStore } from '@/stores/products'
 import Alert from '@/components/Alert.vue'
 import QuantityControl from '@/components/ControlloQuantitaProdotto.vue'
-import Switch from '@/components/Switch.vue'
 
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+
+import { useCartClasseStore } from '@/stores/cartClasse'
 
 const cartStore = useCartStore()
 const productsStore = useProductsStore()
 const router = useRouter()
 
+
+const haveCart = ref(false)
+
 const allProducts = computed(() => productsStore.products)
 console.log('allProducts', allProducts.value)
 
 const items = computed(() => cartStore.getItems())
+
+async function getCart() {
+    const cart = await cartStore.getOrdineByTurno()
+    console.log('cart', cart)
+    haveCart.value = cart === true
+}
+
 
 const itemsDetails = computed(() => {
     return items.value.map(item => {
@@ -31,8 +42,6 @@ console.log('itemsDetails', itemsDetails.value)
 
 const hasItems = computed(() => items.value.length > 0)
 
-
-
 const totalPrice = computed(() => {
     return items.value.reduce((total, item) => {
         const product = allProducts.value.find(p => p.id === item.id)
@@ -47,7 +56,21 @@ const continueShopping = () => {
 const checkoutAlertMessage = ref('Checkout functionality will be implemented in the future!')
 const showCheckoutAlert = ref(false)
 
-const checkout = () => {
+const checkout= () => {
+    if(selectedMacro.value === 'classe') {
+        checkoutClasse();
+    } else {
+        checkoutPersonale();
+    }
+}
+
+const checkoutClasse = () => {
+    checkoutAlertMessage.value = 'Confermi l\'ordine di classe?'
+    showCheckoutAlert.value = true
+}
+
+const checkoutPersonale = () => {
+    checkoutAlertMessage.value = 'Confermi di procedere con l\'ordine?'
     showCheckoutAlert.value = true
 }
 
@@ -55,12 +78,23 @@ const clearCart = () => {
     cartStore.clearCart()
 }
 
-const handleAlertClose = () => {
+const confOdr = () => {
+    if(selectedMacro.value === 'classe') {
+        console.log('confirmOdrClasse')
+        showCheckoutAlert.value = false
+    } else {
+        cartStore.confirmCart()
+        console.log('confirmOdrPersonale')
+        showCheckoutAlert.value = false
+    }
+}
+
+const cancelOdr = () => {
+    console.log('noconfOdr')
     showCheckoutAlert.value = false
 }
 
-const selectedMacro = ref('personale')
-
+const selectedMacro = ref<'personale' | 'classe' | 'corrente'>('personale')
 
 const isconf = ref(true)
 function confirmOrd(id: number, status: boolean) {
@@ -68,12 +102,19 @@ function confirmOrd(id: number, status: boolean) {
     console.log('confirmOrd', id, status);
 }
 
+const cartClasseStore = useCartClasseStore()
+onMounted(async () => {
+  const ordineClasse = await cartClasseStore.getOrdine()
+  console.log("oc",ordineClasse)
+})
+
+getCart();
 
 </script>
 
 <template>
     <div class="carrello">
-        <Alert v-if="showCheckoutAlert" type="error" :message="checkoutAlertMessage" @close="handleAlertClose" />
+        <Alert v-if="showCheckoutAlert" type="confirm" :message="checkoutAlertMessage" @confirm="confOdr" @cancel="cancelOdr"/>
 
         <div class="category-switch">
 
@@ -122,7 +163,7 @@ function confirmOrd(id: number, status: boolean) {
                                 }}
                             </span>
                             <div class="quantity-price">
-                                <QuantityControl :productId="item.id" :delete="false" />
+                                <QuantityControl :productId="item.id" :delete="false" :disabled="haveCart"/>
                                 <span class="item-total">
                                     €{{
                                         (item.quantity * item.price).toFixed(2)
@@ -142,7 +183,8 @@ function confirmOrd(id: number, status: boolean) {
                     <span>€{{ totalPrice.toFixed(2) }}</span>
                 </div>
                 <div class="summary-actions">
-                    <button class="checkout-btn" @click="checkout">Procedi all'ordine</button>
+                    <button class="checkout-btn" @click="checkout" :disabled="haveCart">Procedi all'ordine</button>
+                    <button v-if="haveCart" class="checkout-btn" >Elimina oridine</button>
                     <button class="clear-btn" @click="clearCart">Svuota carrello</button>
                     <button class="continue-btn" @click="continueShopping">Continua lo shopping</button>
                 </div>
@@ -157,7 +199,7 @@ function confirmOrd(id: number, status: boolean) {
 
             <div v-else class="cart-summary">
                 <div class="summary-header">
-                    <h2>Riepilogo ordine classe 5Bi</h2>
+                    <h2>Riepilogo ordine classe</h2>
                 </div>
 
                 <div class="summary-content classe">
@@ -381,6 +423,18 @@ h2 {
 
 .clear-btn:hover {
     background-color: var(--red);
+}
+
+.checkout-btn:disabled {
+    background-color: var(--color-background-mute) !important;
+    color: var(--color-text-mute) !important;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.checkout-btn:disabled:hover {
+    background-color: var(--color-background-mute) !important;
+    transform: none !important;
 }
 
 /* Receipt styling */
