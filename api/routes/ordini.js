@@ -558,6 +558,77 @@ router.get('/classi/me',
     }
 );
 
+router.put('/classi/me/conferma/:id',
+    authenticateJWT,
+    authorizeRole(['paninaro']),
+    async (req, res) => {
+        const connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        try {
+            const paninaroId = req.user.id;
+            const orderId = req.params.id;
+            const { nTurno } = req.body;
+            const today = new Date().toISOString().split('T')[0];
+
+            const [classePaninaro] = await connection.query(
+                'SELECT classe FROM Utente WHERE idUtente = ?',
+                [paninaroId]
+            );
+
+            if (!classePaninaro[0]?.classe) {
+                await connection.rollback();
+                return res.status(403).json({ error: 'Paninaro non assegnato a nessuna classe' });
+            }
+
+            // verifica che l'ordine sia della stessa classe e non già confermato
+            const [ordine] = await connection.query(`
+                SELECT os.idOrdine 
+                FROM OrdineSingolo os
+                JOIN Utente u ON os.user = u.idUtente
+                WHERE 
+                    os.idOrdine = ?
+                    AND u.classe = ?
+                    AND os.data = ?
+                    AND os.nTurno = ?
+                    AND os.idOrdineClasse IS NULL`,
+                [orderId, classePaninaro[0].classe, today, nTurno]
+            );
+
+            if (ordine.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({ 
+                    error: 'Ordine non trovato o già confermato',
+                });
+            }
+
+
+            await connection.query(`
+                UPDATE OrdineSingolo 
+                SET confermato = ?
+                WHERE idOrdine = ?`,
+                [confermato, orderId]
+            );
+
+            await connection.commit();
+
+            res.json({ 
+                success: true,
+                message: 'Ordine confermato con successo',
+            });
+
+        } catch (error) {
+            await connection.rollback();
+            console.error('Errore conferma ordine:', error);
+            res.status(500).json({ 
+                error: 'Errore del database',
+            });
+        } finally {
+            connection.release();
+        }
+    }
+);
+
 // Conferma ordini individuali e crea ordine di classe
 router.put('/classi/me/conferma',
     authenticateJWT,
@@ -632,6 +703,8 @@ router.put('/classi/me/conferma',
         }
     }
 );
+
+
 
 // Ottieni ordini di classe raggruppati per nome di classe specifico
 router.get('/classi/:classe',
