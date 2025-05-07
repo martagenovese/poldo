@@ -426,7 +426,7 @@ router.post('/',
             let idOrdineClasse;
             let idOrdineSingolo;
 
-            if (userRole === 'studente') {
+            if (userRole === 'studente' || userRole === 'paninaro') {
                 const [userClass] = await connection.query(`
                     SELECT classe FROM Utente WHERE idUtente = ?
                 `, [userId]);
