@@ -36,6 +36,11 @@ const hasSelectedTurno = computed(() =>
     !!turnoStore.turnoSelezionato
 )
 
+const nomeTurno = computed(() => {
+    const turno = turnoStore.turni.find(turno => turno.n === turnoStore.turnoSelezionato)
+    return turno ? turno.nome : 'Turno non selezionato'
+})
+
 const navigate = (path: string, requiresTurno: boolean) => {
     if (requiresTurno && !hasSelectedTurno.value) {
         showMenu.value = false
@@ -58,7 +63,7 @@ const navigate = (path: string, requiresTurno: boolean) => {
                     v-if="hasSelectedTurno"
                     class="turno-subtitle"
                 >
-                    {{ turnoStore.turnoSelezionato === 'primo' ? 'Primo Turno' : 'Secondo Turno' }}
+                    {{ nomeTurno }}
                 </div>
             </div>
         </div>

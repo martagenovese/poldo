@@ -3,6 +3,7 @@ import { useCartStore } from '@/stores/cart'
 import { useProductsStore } from '@/stores/products'
 import Alert from '@/components/Alert.vue'
 import QuantityControl from '@/components/ControlloQuantitaProdotto.vue'
+import type { OrdineClasse } from '@/stores/cartClasse'
 
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -12,9 +13,10 @@ import { useCartClasseStore } from '@/stores/cartClasse'
 const cartStore = useCartStore()
 const productsStore = useProductsStore()
 const router = useRouter()
-
+const cartClasseStore = useCartClasseStore()
 
 const haveCart = ref(false)
+const haveCartClasse = ref(false)
 
 const allProducts = computed(() => productsStore.products)
 console.log('allProducts', allProducts.value)
@@ -80,17 +82,21 @@ const clearCart = () => {
 }
 
 const confOdr = async () => {
-  if (selectedMacro.value === 'classe') {
-    console.log('confirmOdrClasse')
     showCheckoutAlert.value = false
-  } else {
-    console.log('confirmOdrPersonale')
-    const risp = await cartStore.confirmCart()
+    if (selectedMacro.value === 'classe') {
+        console.log('confirmOdrClasse')
+        const risp = await cartClasseStore.confOrdClasse()
+        altertype.value = risp ? 'success' : 'error'
+        checkoutAlertMessage.value = risp ? 'Ordine di classe confermato!' : 'Errore durante la conferma dell\'ordine di classe'
+        showCheckoutAlert.value = true
+    } else {
+        console.log('confirmOdrPersonale')
+        const risp = await cartStore.confirmCart()
 
-    altertype.value = risp.ok ? 'success' : 'error'
-    checkoutAlertMessage.value = risp.message
-    showCheckoutAlert.value = true
-  }
+        altertype.value = risp.ok ? 'success' : 'error'
+        checkoutAlertMessage.value = risp.message
+        showCheckoutAlert.value = true
+    }
 }
 
 const cancelOdr = () => {
@@ -104,21 +110,46 @@ const closeAlert = () => {
     altertype.value = 'confirm'
 }
 
-const selectedMacro = ref<'personale' | 'classe' | 'corrente'>('personale')
+const selectedMacro = ref<'personale' | 'classe'>('personale')
 
-const isconf = ref(true)
-function confirmOrd(id: number, status: boolean) {
-    isconf.value = status
-    console.log('confirmOrd', id, status);
+
+
+
+const ordineClasse = ref<OrdineClasse | null>(null)
+const loadingClasse = ref(false)
+const isconf = ref<{id: number, isConf: boolean}[]>([])
+
+onMounted(async () => {
+    loadingClasse.value = true
+    try {
+        const result = await cartClasseStore.getOrdine()
+        ordineClasse.value = result !== false ? result : null
+        haveCartClasse.value = ordineClasse.value?.confermato === true
+        console.log('haveordineClasse', haveCartClasse.value)
+        isconf.value = ordineClasse.value?.ordine.map(o => ({
+            id: o.idOrdine,
+            isConf: o.confermato
+        })) || [];
+    } finally {
+        loadingClasse.value = false
+    }
+})
+
+
+
+
+async function confirmOrd(id: number, status: boolean) {
+    const res = await cartClasseStore.confOrd(id, status)
+    if(res === true) {
+        const index = isconf.value.findIndex(o => o.id === id)
+        isconf.value[index].isConf = status
+        console.log('confirmOrd', id, status);
+    } else {
+        console.log('confirmOrd error')
+    }
+    
 }
 
-const cartClasseStore = useCartClasseStore()
-const ordineClasse = ref()
-
-onMounted(() => {
-    const c = cartClasseStore.getOrdine();
-    ordineClasse.value = c;
-}),
 
 getCart();
 
@@ -216,12 +247,14 @@ getCart();
 
                 <div class="summary-content classe">
                     <!-- Receipt items -->
-                    <div v-for="ordine in ordineClasse.ordine" :key="ordine.idOrdine" class="receipt-items">
+                    <div v-for="ordine in (ordineClasse?ordineClasse.ordine:[])" :key="ordine.idOrdine" class="receipt-items">
                         <div class="receipt-person">
-                            <span>Giacomo Marconi</span>
+                            <div>
+                                <span class="giallo">{{ ordine.user.nome }}</span><span> : €{{ ordine.totale }}</span> 
+                            </div>
                             <div class="switch-container">
-                                <button class="switch-btn" :class="{ active: isconf }"
-                                    @click="confirmOrd(1, true)">
+                                <button class="switch-btn" :class="{ active: isconf.find(o => o.id === ordine.idOrdine)?.isConf }"
+                                    @click="confirmOrd(ordine.idOrdine, true)">
                                     <svg class="icon" viewBox="0 0 24 24">
                                         <path
                                             d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
@@ -230,8 +263,8 @@ getCart();
                                     <span>Accetta</span>
                                 </button>
 
-                                <button class="switch-btn" :class="{ active: !isconf }"
-                                    @click="confirmOrd(1, false)">
+                                <button class="switch-btn" :class="{ active: !isconf.find(o => o.id === ordine.idOrdine)?.isConf }"
+                                    @click="confirmOrd(ordine.idOrdine, false)">
                                     <svg class="icon" viewBox="0 0 24 24">
                                         <path
                                             d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z" />
@@ -241,36 +274,33 @@ getCart();
                             </div>
 
                         </div>
-                        <div v-for="item in itemsDetails" :key="item.id" class="receipt-item">
-                            <img :src="item.imageSrc" alt="Product Image" class="product-image" />
+                        <div v-for="item in ordine.prodotti" :key="item.idProdotto" class="receipt-item">
+                            <img src="https://lh3.googleusercontent.com/a/ACg8ocLPv09a9-uNbEG-ZfRm5bWQUlyLOpBaKxHz88de_c6vB8RvQ_Plrg=s96-c" alt="Product Image" class="product-image" />
                             <span class="product-info">
-                                x{{ item.quantity }}
+                                x{{ item.quantita }}
                                 {{
-                                    item.title
+                                    item.nome
                                 }}
                             </span>
                             <div class="quantity-price">
                                 <!-- <QuantityControl :productId="item.id" :delete="false" /> -->
                                 <span class="item-total">
                                     €{{
-                                        (item.quantity * item.price).toFixed(2)
+                                        (item.quantita * item.prezzo).toFixed(2)
                                     }}
                                 </span>
                             </div>
                         </div>
                     </div>
-
-
-
                 </div>
                 <!-- Receipt total -->
                 <div class="receipt-total">
                     <span>Totale</span>
-                    <span>€{{ totalPrice.toFixed(2) }}</span>
+                    <span>€{{ ordineClasse ? ordineClasse.totale : '0.00' }}</span>
                 </div>
 
                 <div class="summary-actions">
-                    <button class="checkout-btn" @click="checkout">Conferma ordine</button>
+                    <button class="checkout-btn" @click="checkout" :disabled="haveCartClasse">Conferma ordine</button>
                     <button class="checkout-btn" @click="checkout">Vedi QR-code</button>
                 </div>
             </div>
@@ -286,6 +316,10 @@ getCart();
     display: flex;
     flex-direction: column;
     overflow: hidden;
+}
+
+.giallo {
+    color: var(--poldo-primary);
 }
 
 h1,
@@ -514,6 +548,19 @@ h2 {
     gap: 8px;
     justify-content: flex-start;
     overflow-y: auto;
+}
+
+.classe{
+    justify-content: flex-start;
+}
+
+.classe .receipt-items{
+    border-radius: 15px;
+    overflow-y: visible;
+    padding: 10px;
+    background-color: var(--color-background-soft);
+    box-shadow: 0 2px 8px var(--poldo-card-shadow);
+    border: 1px solid var(--color-border);
 }
 
 .quantity-price {

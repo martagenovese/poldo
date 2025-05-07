@@ -47,13 +47,11 @@ router.beforeEach((to, from, next) => {
     return
   }
 
-  // Check if turno is selected
+  
   const turnoStore = useTurnoStore()
-  if (!turnoStore.turnoSelezionato) {
-    // Redirect to home if no turno is selected
+  if (turnoStore.turnoSelezionato === -1) {
     next({ name: 'home' })
   } else {
-    // Continue navigation if turno is selected
     next()
   }
 })

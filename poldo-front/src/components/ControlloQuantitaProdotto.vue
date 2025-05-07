@@ -42,8 +42,8 @@ const removeItem = () => {
 </script>
 
 <template>
-    <div class="quantity-controls">
-        <button v-if="delete" class="quantity-btn delete" @click.stop="removeItem" :disabled="disabled">
+    <div :class="disabled===true ? 'quantity-controls disabled' : 'quantity-controls'">
+        <button v-if="delete" class="quantity-btn delete" @click.stop="removeItem">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M3 6h18" />
@@ -52,11 +52,11 @@ const removeItem = () => {
             </svg>
         </button>
         <button class="quantity-btn minus" :class="{ 'disabled': currentQuantity === 0 }"
-            @click.stop="handleQuantityChange(-1)" :disabled="currentQuantity === 0 || disabled">
+            @click.stop="handleQuantityChange(-1)" :disabled="currentQuantity === 0">
             -
         </button>
         <span class="quantity">{{ currentQuantity }}</span>
-        <button class="quantity-btn plus" @click.stop="handleQuantityChange(1)" :disabled="disabled">
+        <button class="quantity-btn plus" @click.stop="handleQuantityChange(1)">
             +
         </button>
     </div>
@@ -68,6 +68,10 @@ const removeItem = () => {
     align-items: center;
     gap: 8px;
     z-index: 2;
+}
+
+.disabled {
+    display: none;
 }
 
 .quantity-btn {

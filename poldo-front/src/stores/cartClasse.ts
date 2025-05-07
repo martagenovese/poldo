@@ -16,12 +16,16 @@ interface User {
 
 interface Ordine {
   idOrdine: number
+  confermato: boolean
+  totale: number
   user: User
   prodotti: CartItem[]
 }
 
-interface OrdineClasse {
+export interface OrdineClasse {
   nTurno: number
+  totale: number
+  confermato: boolean
   ordine: Ordine[]
 }
 
@@ -35,33 +39,41 @@ export const useCartClasseStore = defineStore('cartClasse', () => {
       Authorization:
         'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTAsInJ1b2xvIjoicGFuaW5hcm8iLCJpYXQiOjE3NDQzMDc2ODgsImV4cCI6MTc3NTg2NTI4OH0.noyJJ5yLRAdZ4bxIOGdlYBjSZQElmXV4KOqGGVJHl_Q',
     }
-  
+
     try {
       const response = await fetch(
         `http://figliolo.it:5005/v1/ordini/classi/me/oggi?nTurno=${currentTurno.value}`,
-        { method: 'GET', headers }
+        { method: 'GET', headers },
       )
-  
+
       if (!response.ok) throw new Error('Network response was not ok')
-  
+
       const rawData = await response.json()
       console.log('rawData', rawData)
-  
+
       const parsed: OrdineClasse = {
+        confermato: rawData.confermato,
         nTurno: currentTurno.value,
-        ordine: rawData.map((o: any): Ordine => ({
-          idOrdine: o.idOrdine,
-          user: {
-            id: o.user.id,
-            nome: o.user.nome,
-          },
-          prodotti: o.prodotti.map((p: any): CartItem => ({
-            idProdotto: p.idProdotto,
-            quantita: p.quantita,
-            prezzo: p.prezzo,
-            nome: p.nome,
-          })),
-        })),
+        totale: rawData.totale,
+        ordine: rawData.ordini.map(
+          (o: any): Ordine => ({
+            idOrdine: o.idOrdine,
+            confermato: o.confermato,
+            totale: o.totale,
+            user: {
+              id: o.user.id,
+              nome: o.user.nome,
+            },
+            prodotti: o.prodotti.map(
+              (p: any): CartItem => ({
+                idProdotto: p.idProdotto,
+                quantita: p.quantita,
+                prezzo: p.prezzo,
+                nome: p.nome,
+              }),
+            ),
+          }),
+        ),
       }
       console.log('parsed', parsed)
       return parsed
@@ -70,9 +82,62 @@ export const useCartClasseStore = defineStore('cartClasse', () => {
       return false
     }
   }
+
+  async function confOrd(id: number, status: boolean) : Promise<true | false> {
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization:
+        'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTAsInJ1b2xvIjoicGFuaW5hcm8iLCJpYXQiOjE3NDQzMDc2ODgsImV4cCI6MTc3NTg2NTI4OH0.noyJJ5yLRAdZ4bxIOGdlYBjSZQElmXV4KOqGGVJHl_Q',
+    }
+
+    const result = await fetch(`http://figliolo.it:5005/v1/ordini/classi/me/conferma/${id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({
+        nTurno: currentTurno.value,
+        confermato: status,
+      }),
+    })
+
+    console.log('result', result)
+
+    if (!result.ok) {
+      console.error('Error confirming order:', result.statusText)
+      return false
+    }
+
+
+    return true
+  }
+
+  async function confOrdClasse() : Promise<true | false> {
+    const headers = {
+        'Content-Type': 'application/json',
+        Authorization:
+          'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NTAsInJ1b2xvIjoicGFuaW5hcm8iLCJpYXQiOjE3NDQzMDc2ODgsImV4cCI6MTc3NTg2NTI4OH0.noyJJ5yLRAdZ4bxIOGdlYBjSZQElmXV4KOqGGVJHl_Q',
+      }
   
+      const result = await fetch(`http://figliolo.it:5005/v1/ordini/classi/me/conferma`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          nTurno: currentTurno.value,
+        }),
+      })
+  
+      console.log('result', result)
+  
+      if (!result.ok) {
+        console.error('Error confirming order:', result.statusText)
+        return false
+      }
+  
+      return true
+  }
 
   return {
     getOrdine,
+    confOrd,
+    confOrdClasse,
   }
 })
