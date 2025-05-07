@@ -558,7 +558,7 @@ router.get('/classi/me',
     }
 );
 
-router.put('/classi/me/conferma/:id',
+router.patch('/classi/me/conferma/:id',
     authenticateJWT,
     authorizeRole(['paninaro']),
     async (req, res) => {
