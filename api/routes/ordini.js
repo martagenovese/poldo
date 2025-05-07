@@ -221,7 +221,7 @@ router.get('/classi/me/oggi',
                     os.confermato,
                     os.user,
                     u.nome AS nomeUtente,
-                    ROUND(sum(dos.quantita*p.prezzo)) AS totale,
+                    ROUND(sum(dos.quantita*p.prezzo), 2) AS totale,
                     JSON_ARRAYAGG(
                         JSON_OBJECT(
                             'idProdotto', p.idProdotto,
