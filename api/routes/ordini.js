@@ -255,7 +255,7 @@ router.get('/classi/me/oggi',
                 return order.confermato ? acc + Number(order.totale) : acc
             }, 0).toFixed(2); 
 
-            const confermato = orders[0].confermatoClasse;
+            const confermatoClasse = orders[0].confermatoClasse;
 
             const formattedOrders = orders.map(order => ({
                 idOrdine: order.idOrdine,
