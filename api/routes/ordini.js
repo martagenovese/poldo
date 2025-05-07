@@ -221,6 +221,7 @@ router.get('/classi/me/oggi',
                     os.confermato,
                     os.user,
                     u.nome AS nomeUtente,
+                    sum(dos.quantita*p.prezzo) AS totale,
                     JSON_ARRAYAGG(
                         JSON_OBJECT(
                             'idProdotto', p.idProdotto,
@@ -252,6 +253,7 @@ router.get('/classi/me/oggi',
             const formattedOrders = orders.map(order => ({
                 idOrdine: order.idOrdine,
                 confermato: order.confermato,
+                totale: order.totale,
                 user: {
                     id: order.user,
                     nome: order.nomeUtente
