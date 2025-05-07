@@ -250,7 +250,9 @@ router.get('/classi/me/oggi',
                 return res.status(404).json({ error: 'Nessun ordine trovato per oggi in questo turno' });
             }
             
-            const totale = orders.reduce((acc, order) => acc + order.totale, 0);
+            const totaleAccettato = orders.reduce((acc, order) => {
+                return order.confermato ? acc + Number(order.totale) : acc
+            }, 0);
 
             const formattedOrders = orders.map(order => ({
                 idOrdine: order.idOrdine,
@@ -264,7 +266,8 @@ router.get('/classi/me/oggi',
             }));
     
             res.json({
-                totale: totale,
+                nTurno: Number(nTurno),
+                totale: totaleAccettato,
                 ordini: formattedOrders
             });
     
