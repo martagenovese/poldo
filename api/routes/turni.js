@@ -3,18 +3,22 @@ const router = express.Router();
 const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
-function getQueryTurni(ruolo, giorno) {
-    if(['admin', "professore"].includes(ruolo)) {
-        return `SELECT * FROM Turno WHERE n=0 AND giorno = ?`;
+function getQueryTurni(ruolo) {
+    if(["studente"].includes(ruolo)) {
+        return 'SELECT * FROM Turno WHERE giorno = ? AND studenti = 1';
     }
-    return `SELECT * FROM Turno WHERE n!=0 AND giorno = ?`;
+    return 'SELECT * FROM Turno WHERE AND giorno = ?';
 }
 
 
-router.get('/', authenticateJWT, authorizeRole(['admin', 'gestore']), async (req, res) => {
+router.get('/', authenticateJWT, async (req, res) => {
     const connection = await pool.getConnection();
     try {
-        const [rows] = await connection.query(getQueryTurni(req.user.ruolo, req.query.giorno), [req.query.giorno]);
+
+        const giorniEnum = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
+        const giorno = !req.query.giorno ? giorniEnum[new Date().getDay()] : req.query.giorno;
+
+        const [rows] = await connection.query(getQueryTurni(req.user.ruolo), [giornoo]);
         
         if(rows.length === 0) {
             return res.status(404).json({ error: 'Nessun turno trovato' });
