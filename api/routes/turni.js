@@ -18,7 +18,7 @@ router.get('/', authenticateJWT, async (req, res) => {
         const giorniEnum = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
         const giorno = !req.query.giorno ? giorniEnum[new Date().getDay()] : req.query.giorno;
 
-        const [rows] = await connection.query(getQueryTurni(req.user.ruolo), [giornoo]);
+        const [rows] = await connection.query(getQueryTurni(req.user.ruolo), [giorno]);
         
         if(rows.length === 0) {
             return res.status(404).json({ error: 'Nessun turno trovato' });
