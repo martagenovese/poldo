@@ -221,7 +221,7 @@ router.get('/classi/me/oggi',
                     os.confermato,
                     os.user,
                     u.nome AS nomeUtente,
-                    sum(dos.quantita*p.prezzo) AS totale,
+                    ROUND(sum(dos.quantita*p.prezzo)) AS totale,
                     JSON_ARRAYAGG(
                         JSON_OBJECT(
                             'idProdotto', p.idProdotto,
@@ -252,7 +252,7 @@ router.get('/classi/me/oggi',
             
             const totaleAccettato = orders.reduce((acc, order) => {
                 return order.confermato ? acc + Number(order.totale) : acc
-            }, 0);
+            }, 0).toFixed(2); 
 
             const formattedOrders = orders.map(order => ({
                 idOrdine: order.idOrdine,
