@@ -4,10 +4,10 @@ const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
 
 function getQueryTurni(ruolo) {
-    if(["studente"].includes(ruolo)) {
+    if(["studente", "paninaro"].includes(ruolo)) {
         return 'SELECT * FROM Turno WHERE giorno = ? AND studenti = 1';
     }
-    return 'SELECT * FROM Turno WHERE AND giorno = ?';
+    return 'SELECT * FROM Turno WHERE giorno = ?';
 }
 
 
