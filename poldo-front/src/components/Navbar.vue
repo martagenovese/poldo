@@ -17,7 +17,8 @@ defineProps<{
 const pageTitles = {
     home: 'Home',
     prodotti: 'Prodotti',
-    carrello: 'Carrello'
+    carrello: 'Carrello',
+    ordinazioni: 'Ordinazioni'
 } as const
 
 const navRoutes = [
@@ -56,9 +57,8 @@ const navigate = (path: string, requiresTurno: boolean) => {
                 <div class="main-title">Poldo {{ pageTitle }}</div>
                 <div
                     v-if="hasSelectedTurno"
-                    class="turno-subtitle"
-                >
-                    {{ turnoStore.turnoSelezionato === 'primo' ? 'Primo Turno' : 'Secondo Turno' }}
+                    class="turno-subtitle">
+                    {{ turnoStore.turnoSelezionato === 1 ? 'Primo Turno' : 'Secondo Turno' }}
                 </div>
             </div>
         </div>
