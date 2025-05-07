@@ -569,12 +569,19 @@ router.patch('/classi/me/conferma/:id',
             const paninaroId = req.user.id;
             const orderId = req.params.id;
             const { nTurno } = req.body;
+            const { confermato } = req.body;
             const today = new Date().toISOString().split('T')[0];
 
             const [classePaninaro] = await connection.query(
                 'SELECT classe FROM Utente WHERE idUtente = ?',
                 [paninaroId]
             );
+
+
+            if(!confermato || !nTurno){
+                await connection.rollback();
+                return res.status(400).json({ error: 'Parametri nTurno e/o confermato obbligatori' });
+            }
 
             if (!classePaninaro[0]?.classe) {
                 await connection.rollback();
