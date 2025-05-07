@@ -36,6 +36,7 @@ router.get('/',
                     oc.classe,
                     oc.confermato,
                     oc.preparato,
+                    oc.oraRitiro,
                     JSON_ARRAYAGG(
                         JSON_OBJECT(
                             'idProdotto', p.idProdotto,
