@@ -249,7 +249,9 @@ router.get('/classi/me/oggi',
             if (orders.length === 0) {
                 return res.status(404).json({ error: 'Nessun ordine trovato per oggi in questo turno' });
             }
-    
+            
+            const totale = orders.reduce((acc, order) => acc + order.totale, 0);
+
             const formattedOrders = orders.map(order => ({
                 idOrdine: order.idOrdine,
                 confermato: order.confermato,
@@ -261,7 +263,10 @@ router.get('/classi/me/oggi',
                 prodotti: order.prodotti
             }));
     
-            res.json(formattedOrders);
+            res.json({
+                totale: totale,
+                ordini: formattedOrders
+            });
     
         } catch (error) {
             console.error('Errore nel recupero ordini della classe per oggi:', error);
