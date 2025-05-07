@@ -214,13 +214,14 @@ router.get('/classi/me/oggi',
             if (!classePaninaro[0]?.classe) {
                 return res.status(403).json({ error: 'Nessuna classe assegnata' });
             }
-    
+
             const query = `
                 SELECT
                     os.idOrdine,
                     os.confermato,
                     os.user,
                     u.nome AS nomeUtente,
+                    os.idOrdineClasse,
                     ROUND(sum(dos.quantita*p.prezzo), 2) AS totale,
                     JSON_ARRAYAGG(
                         JSON_OBJECT(
@@ -254,6 +255,8 @@ router.get('/classi/me/oggi',
                 return order.confermato ? acc + Number(order.totale) : acc
             }, 0).toFixed(2); 
 
+            const confermato = orders[0].confermato;
+
             const formattedOrders = orders.map(order => ({
                 idOrdine: order.idOrdine,
                 confermato: order.confermato,
@@ -266,6 +269,7 @@ router.get('/classi/me/oggi',
             }));
     
             res.json({
+                confermato: confermato,
                 nTurno: Number(nTurno),
                 totale: totaleAccettato,
                 ordini: formattedOrders
