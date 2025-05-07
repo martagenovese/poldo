@@ -597,14 +597,15 @@ router.patch('/classi/me/conferma/:id',
                     os.idOrdine = ?
                     AND u.classe = ?
                     AND os.data = ?
-                    AND os.nTurno = ?`,
+                    AND os.nTurno = ?
+                    AND os.idOrdineClasse IS NULL`,
                 [orderId, classePaninaro[0].classe, today, nTurno]
             );
 
             if (ordine.length === 0) {
                 await connection.rollback();
                 return res.status(404).json({ 
-                    error: 'Ordine non trovato o già confermato',
+                    error: 'Ordine non trovato o già confermato ordine di classe',
                 });
             }
 
