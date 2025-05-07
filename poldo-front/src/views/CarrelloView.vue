@@ -55,6 +55,7 @@ const continueShopping = () => {
 
 const checkoutAlertMessage = ref('Checkout functionality will be implemented in the future!')
 const showCheckoutAlert = ref(false)
+const altertype = ref<'confirm' | 'error' | 'success'>('confirm')
 
 const checkout= () => {
     if(selectedMacro.value === 'classe') {
@@ -78,20 +79,29 @@ const clearCart = () => {
     cartStore.clearCart()
 }
 
-const confOdr = () => {
-    if(selectedMacro.value === 'classe') {
-        console.log('confirmOdrClasse')
-        showCheckoutAlert.value = false
-    } else {
-        cartStore.confirmCart()
-        console.log('confirmOdrPersonale')
-        showCheckoutAlert.value = false
-    }
+const confOdr = async () => {
+  if (selectedMacro.value === 'classe') {
+    console.log('confirmOdrClasse')
+    showCheckoutAlert.value = false
+  } else {
+    console.log('confirmOdrPersonale')
+    const risp = await cartStore.confirmCart()
+
+    altertype.value = risp.ok ? 'success' : 'error'
+    checkoutAlertMessage.value = risp.message
+    showCheckoutAlert.value = true
+  }
 }
 
 const cancelOdr = () => {
     console.log('noconfOdr')
     showCheckoutAlert.value = false
+}
+
+const closeAlert = () => {
+    console.log('closeAlert')
+    showCheckoutAlert.value = false
+    altertype.value = 'confirm'
 }
 
 const selectedMacro = ref<'personale' | 'classe' | 'corrente'>('personale')
@@ -103,10 +113,12 @@ function confirmOrd(id: number, status: boolean) {
 }
 
 const cartClasseStore = useCartClasseStore()
-onMounted(async () => {
-  const ordineClasse = await cartClasseStore.getOrdine()
-  console.log("oc",ordineClasse)
-})
+const ordineClasse = ref()
+
+onMounted(() => {
+    const c = cartClasseStore.getOrdine();
+    ordineClasse.value = c;
+}),
 
 getCart();
 
@@ -114,7 +126,7 @@ getCart();
 
 <template>
     <div class="carrello">
-        <Alert v-if="showCheckoutAlert" type="confirm" :message="checkoutAlertMessage" @confirm="confOdr" @cancel="cancelOdr"/>
+        <Alert v-if="showCheckoutAlert" :type="altertype" :message="checkoutAlertMessage" @confirm="confOdr" @cancel="cancelOdr" @close="closeAlert"/>
 
         <div class="category-switch">
 
@@ -204,7 +216,7 @@ getCart();
 
                 <div class="summary-content classe">
                     <!-- Receipt items -->
-                    <div class="receipt-items">
+                    <div v-for="ordine in ordineClasse.ordine" :key="ordine.idOrdine" class="receipt-items">
                         <div class="receipt-person">
                             <span>Giacomo Marconi</span>
                             <div class="switch-container">
