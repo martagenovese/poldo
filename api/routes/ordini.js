@@ -218,6 +218,7 @@ router.get('/classi/me/oggi',
             const query = `
                 SELECT
                     os.idOrdine,
+                    os.confermato,
                     os.user,
                     u.nome AS nomeUtente,
                     JSON_ARRAYAGG(
