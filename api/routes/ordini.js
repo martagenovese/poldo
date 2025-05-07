@@ -578,7 +578,7 @@ router.patch('/classi/me/conferma/:id',
             );
 
 
-            if(!confermato || !nTurno){
+            if(confermato === undefined || nTurno === undefined) {
                 await connection.rollback();
                 return res.status(400).json({ error: 'Parametri nTurno e/o confermato obbligatori' });
             }
@@ -597,8 +597,7 @@ router.patch('/classi/me/conferma/:id',
                     os.idOrdine = ?
                     AND u.classe = ?
                     AND os.data = ?
-                    AND os.nTurno = ?
-                    AND os.idOrdineClasse IS NULL`,
+                    AND os.nTurno = ?`,
                 [orderId, classePaninaro[0].classe, today, nTurno]
             );
 
