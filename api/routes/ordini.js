@@ -251,6 +251,7 @@ router.get('/classi/me/oggi',
     
             const formattedOrders = orders.map(order => ({
                 idOrdine: order.idOrdine,
+                confermato: order.confermato,
                 user: {
                     id: order.user,
                     nome: order.nomeUtente
