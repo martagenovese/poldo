@@ -12,9 +12,13 @@ const parseJSON = (data) => {
     }
 };
 
-// Funzione di supporto per formattare la data come yyyy-mm-dd
+// Funzione di supporto per formattare la data come yyyy-mm-dd + 1gg
 const formatDate = (date) => {
-    return new Date(date).toISOString().slice(0, 10);
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
 
 // Ottieni tutti gli ordini individuali
@@ -87,7 +91,7 @@ router.get('/',
 
             const result = orders.map(order => ({
                 ...order,
-                data: order.data,
+                data: formatDate(order.data),
                 prodotti: order.prodotti
             }));
 
@@ -177,7 +181,7 @@ router.get('/classi',
 
             const formatted = results.map(row => ({
                 classe: row.classe,
-                data: row.data,
+                data: formatDate(row.data),
                 prodotti: row.prodotti
             }));
 
