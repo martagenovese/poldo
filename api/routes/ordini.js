@@ -804,6 +804,7 @@ router.get('/classi/:classe',
 
             const result = orders.map(order => ({
                 ...order,
+                data: formatDate(order.data),
                 ordiniSingoli: parseJSON(order.ordiniSingoli)
             }));
 
