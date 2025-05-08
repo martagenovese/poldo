@@ -379,7 +379,7 @@ router.post('/',
                 nTurno = parseInt(bodyTurno, 10);
 
                 const [turno] = await connection.query(`
-                    SELECT oraInizioOrdine, oraFineOrdine, studente FROM Turno 
+                    SELECT oraInizioOrdine, oraFineOrdine, studenti FROM Turno 
                     WHERE n = ? AND giorno = ?
                 `, [nTurno, giorno]);
 
@@ -388,7 +388,7 @@ router.post('/',
                     return res.status(400).json({ error: 'Turno non disponibile' });
                 }
 
-                if (userRole === 'studente' && turno[0]?.studente === 0) {
+                if (userRole === 'studente' && turno[0]?.studenti === 0) {
                     await connection.rollback();
                     return res.status(400).json({ error: 'Turno non valido per studenti' });
                 }
