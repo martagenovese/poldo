@@ -51,14 +51,12 @@ const uniqueProducts = computed(() => {
   props.classOrders.forEach(order => {
     // Verify the order has a prodotti property that is an array
     if (!order || !Array.isArray(order.prodotti)) {
-      console.warn('Order missing prodotti array:', order)
       return
     }
     
     order.prodotti.forEach(product => {
       // Skip products without an ID
       if (product.idProdotto === undefined) {
-        console.warn('Product missing idProdotto:', product)
         return
       }
       

@@ -29,7 +29,6 @@ export const useTurnoStore = defineStore('turno', () => {
     try {
 
       const giornoSettimana = new Date().toLocaleDateString('it-IT', { weekday: 'long' }).toLowerCase().substring(0, 3)
-      console.log('Giorno della settimana:', giornoSettimana)
       const response = await fetch(`http://figliolo.it:5005/v1/turni?giorno=${giornoSettimana}`, { headers })
       if (!response.ok) throw new Error('Errore nella risposta della rete')
 

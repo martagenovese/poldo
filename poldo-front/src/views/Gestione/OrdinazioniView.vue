@@ -44,6 +44,7 @@ interface Order {
   oraRitiro?: string 
   prodotti: Product[]
   userRole?: string 
+  userData?: any // Added for user data
 }
 
 interface ClassOrder {
@@ -81,55 +82,132 @@ const selectedOrderDetails = ref<Order[]>([])
 const timeSlots = ref<TimeSlot[]>([])
 
 // Get today's date in local timezone (YYYY-MM-DD)
-const getTodayLocalDate = () => {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  console.log("Formatted date:", `${year}-${month}-${day}`) // Debug log
+const formatDate = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
 
 // Use the function to get today's date in local timezone
-const selectedDate = ref(getTodayLocalDate()) // Format: YYYY-MM-DD
+const selectedDate = ref(formatDate(new Date())) // Format: YYYY-MM-DD
 
 // Use computed property to get available turni from the store
 const availableTurni = computed(() => turnoStore.turni)
 
-// Add a computed property for professor orders specifically 
-const showProfessorTimeline = computed(() => profOrders.value.length > 0)
+// Always show the professor timeline, regardless of selected turno
+const showProfessorTimeline = computed(() => {  
+  // Always show the timeline if we have professor orders, regardless of selected turno
+  return profOrders.value.length > 0;
+})
 
-// TODO: usa libreria
-const generateTimeSlots = () => {
-  const slots: TimeSlot[] = []
-  for (let hour = 7; hour <= 18; hour++) {
-    for (let minute of ['00', '30']) {
-      slots.push({
-        time: `${hour}:${minute}`,
-        orders: []
-      })
-    }
+
+// User cache to avoid multiple API calls for the same user
+const userCache = ref<{[key: number]: any}>({});
+
+// Fetch user information by ID
+const fetchUserById = async (userId: number) => {
+  // If we already have the user data in cache, return it
+  if (userCache.value[userId]) {
+    return userCache.value[userId];
   }
-  return slots
+  
+  try {
+    const response = await fetch(`${API_CONFIG.BASE_URL}/utenti/${userId}`, { headers });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch user data for ID ${userId}`);
+    }
+    
+    const userData = await response.json();
+    
+    // Store in cache for future use
+    userCache.value[userId] = userData;
+    
+    return userData;
+  } catch (error) {
+    console.error(`Error fetching user data for ID ${userId}:`, error);
+    return null;
+  }
 }
 
-// Fetch professor orders - use turno=2
+// Fetch professor orders - use /classi/prof endpoint
 const fetchProfOrders = async () => {
   loading.value = true
   try {
-    // Use turno 2 for professor orders, with startDate and endDate both set to the selected date
-    const response = await fetch(`${API_CONFIG.BASE_URL}/ordini?startDate=${selectedDate.value}&endDate=${selectedDate.value}&nTurno=2`, { headers })
-    console.log("selectedDate:", selectedDate.value) // Debug log
+    console.log("Fetching professor orders for date:", selectedDate.value);
+    
+    // Use /classi/prof endpoint for professor orders
+    const url = `${API_CONFIG.BASE_URL}/ordini/classi/prof?startDate=${selectedDate.value}&endDate=${selectedDate.value}&nTurno=2`;
+    console.log("API URL:", url);
+    
+    const response = await fetch(url, { headers })
+    
     if (!response.ok) {
       throw new Error(`API error with status ${response.status}`)
     }
     
     const data = await response.json()
     console.log("Professor orders data:", data) // Debug log
+    console.log("Professor orders count:", data.length);
     
-    // For professor orders, the classe attribute contains the professor's name
-    // We can identify professors by checking if nTurno is 2
-    profOrders.value = data.filter((order: any) => order.nTurno === 2)
+    // Show detailed info for first order if exists
+    console.log("First professor order:", data.length > 0 ? {
+      idOrdine: data[0].idOrdine,
+      classe: data[0].classe,
+      oraRitiro: data[0].oraRitiro,
+      oraRitiroType: typeof data[0].oraRitiro,
+      hasRitiro: !!data[0].oraRitiro,
+      user: data[0].user,
+      prodotti: data[0].prodotti?.length || 0
+    } : "No orders") // Debug first order 
+    
+    // For professor orders, process each order and fetch user information
+    const processedOrders = [];
+    for (const order of data) {
+      try {
+        // Ensure the order has all required properties to avoid errors
+        const processedOrder = {
+          ...order,
+          prodotti: Array.isArray(order.prodotti) ? order.prodotti : [],
+          classe: order.classe || 'Sconosciuto',
+          userRole: 'prof', // Add role explicitly for better filtering
+          // Make sure oraRitiro is present and in the correct format (HH:MM)
+          oraRitiro: order.oraRitiro ? order.oraRitiro : null
+        };
+        
+        // Debug oraRitiro value
+        if (order.oraRitiro) {
+          console.log(`Order ${order.idOrdine} has oraRitiro: ${order.oraRitiro} (${typeof order.oraRitiro})`);
+        }
+        
+        // Fetch user information if there's a user ID
+        if (order.user) {
+          const userData = await fetchUserById(order.user);
+          if (userData) {
+            processedOrder.userData = userData; // Add user data to the order
+          }
+        }
+        
+        processedOrders.push(processedOrder);
+      } catch (err) {
+        console.error("Error processing professor order:", err, order);
+      }
+    }
+      console.log("Processed orders with oraRitiro:", processedOrders.filter(o => o.oraRitiro).length);
+    console.log("Sample processed order:", processedOrders.length > 0 ? {
+      idOrdine: processedOrders[0].idOrdine,
+      classe: processedOrders[0].classe,
+      oraRitiro: processedOrders[0].oraRitiro,
+      hasRitiro: !!processedOrders[0].oraRitiro,
+      user: processedOrders[0].user,
+      userData: processedOrders[0].userData,
+      prodotti: processedOrders[0].prodotti?.length || 0
+    } : "No orders");
+    
+    profOrders.value = processedOrders;
+    
+    console.log("Processed professor orders:", profOrders.value.length)
   } catch (err) {
     console.error('Error fetching professor orders:', err)
     error.value = 'Errore nel caricamento degli ordini dei professori.'
@@ -152,23 +230,16 @@ const fetchClassOrders = async () => {
     const data = await response.json()
     console.log("Class orders data:", data) // Debug log
     
-    // For turno 2 (professors), use professor orders directly instead of class orders
-    if (selectedTurno.value === 2) {
-      // Use profOrders data converted to ClassOrder format
-      classOrders.value = profOrders.value.map(order => ({
-        classe: order.classe,
-        data: order.data,
-        prodotti: order.prodotti,
-        confermato: order.confermato,
-        oraRitiro: order.oraRitiro
+    // Filter orders for the selected turno and ensure they have proper structure
+    classOrders.value = data
+      .map((order: any) => ({
+        ...order,
+        prodotti: Array.isArray(order.prodotti) ? order.prodotti : [],
+        classe: order.classe || 'Sconosciuta',
+        confermato: order.confermato === undefined ? true : order.confermato
       }))
-    } else {
-      // Normal case for student/class orders
-      classOrders.value = data.filter((order: any) => {
-        // Make sure to use orders for the selected turno
-        return order.nTurno === selectedTurno.value;
-      });
-    }
+    
+    console.log("Processed class orders:", classOrders.value.length)
   } catch (err) {
     console.error('Error fetching class orders:', err)
     error.value = 'Errore nel caricamento degli ordini per classe.'
@@ -180,36 +251,84 @@ const fetchClassOrders = async () => {
 // Get turno times for the selected turno
 const selectedTurnoTimes = computed(() => {
   const turno = turnoStore.turni.find(t => t.n === selectedTurno.value)
+  console.log("Selected turno times:", selectedTurno.value, turno) // Debug log
   if (!turno) {
     console.error(`Turno ${selectedTurno.value} not found!`);
     error.value = `Turno ${selectedTurno.value} non trovato. Selezionare un altro turno.`
     
-    // Return null to indicate a missing turno, which will be handled in the UI
-    return null;
+    // Return default values to prevent errors
+    return {
+      orderStart: '08:00',
+      orderEnd: '10:00',
+      pickupStart: '11:00',
+      pickupEnd: '13:00'
+    };
   }
   
+  // Ensure all time properties have valid values
   return {
-    orderStart: turno.oraInizio,
-    orderEnd: turno.oraFine,
-    pickupStart: turno.inizioRitiro,
-    pickupEnd: turno.fineRitiro
+    orderStart: turno.oraInizio || '08:00',
+    orderEnd: turno.oraFine || '10:00',
+    pickupStart: turno.inizioRitiro || '11:00',
+    pickupEnd: turno.fineRitiro || '13:00'
   }
 })
 
 // Handle turno switch
-const handleTurnoChange = (turno: number) => {
-  selectedTurno.value = turno
-  turnoStore.selectTurno(turno)
-  fetchClassOrders()
+const handleTurnoChange = async (turno: number) => {
+  selectedTurno.value = turno;
+  turnoStore.selectTurno(turno);
+  
+  // Always make sure we have professor data loaded
+  await fetchProfOrders();
+  
+  if (turno === 2) {
+    // When switching to turno 2 (professors), use the professor orders
+    console.log(`Using professor orders for turno ${turno}, found ${profOrders.value.length} orders`);
+    
+    // For turno 2, we also need to update classOrders with professor data
+    // Since the ClassOrders component uses classOrders
+    classOrders.value = profOrders.value.map(order => ({
+      ...order,
+      classe: order.classe || 'Sconosciuto',
+      data: order.data,
+      prodotti: Array.isArray(order.prodotti) ? order.prodotti : [],
+      confermato: order.confermato === undefined ? true : order.confermato,
+      oraRitiro: order.oraRitiro,
+      userData: order.userData
+    }));
+    
+    console.log("Updated classOrders with professor data:", classOrders.value.length);
+  } else {
+    // For other turnos, fetch class orders
+    await fetchClassOrders();
+  }
 }
 
 // Handle date change
-const handleDateChange = (event: Event) => {
+const handleDateChange = async (event: Event) => {
   const newDate = (event.target as HTMLInputElement).value
   selectedDate.value = newDate
   
-  fetchClassOrders()
-  fetchProfOrders()
+  // Always fetch professor data
+  await fetchProfOrders()
+  
+  if (selectedTurno.value === 2) {
+    // If we're in turno 2, use professor data for class orders
+    classOrders.value = profOrders.value.map(order => ({
+      ...order,
+      classe: order.classe || 'Sconosciuto',
+      data: order.data,
+      prodotti: Array.isArray(order.prodotti) ? order.prodotti : [],
+      confermato: order.confermato === undefined ? true : order.confermato,
+      oraRitiro: order.oraRitiro,
+      userData: order.userData
+    }));
+    console.log("Updated classOrders with professor data:", classOrders.value.length);
+  } else {
+    // For other turnos, fetch class orders
+    await fetchClassOrders()
+  }
 }
 
 // Toggle order details modal
@@ -221,17 +340,37 @@ const toggleOrderDetails = (orders: Order[]) => {
 onMounted(async () => {
   await turnoStore.fetchTurni()
   
-  // If there's a previously selected turno in the store, use it
+  // Always fetch professor data regardless of selected turno
+  await fetchProfOrders()
+  
+  // Now set up the selected turno based on store data or default
   if (turnoStore.turnoSelezionato > 0) {
     selectedTurno.value = turnoStore.turnoSelezionato
   } else if (availableTurni.value.length > 0) {
-    // Otherwise set the first available turno - make sure to use the n property (ID)
+    // Select the first available turno
     selectedTurno.value = availableTurni.value[0].n
-    turnoStore.selectTurno(selectedTurno.value)
   }
   
-  fetchClassOrders()
-  fetchProfOrders() // Fetch professor orders independently
+  // Update the store with our selection
+  turnoStore.selectTurno(selectedTurno.value)
+  console.log("Selected turno:", selectedTurno.value)
+  
+  // Handle data loading based on selected turno
+  if (selectedTurno.value === 2) {
+    // For turno 2, use professor data already loaded
+    classOrders.value = profOrders.value.map(order => ({
+      ...order,
+      classe: order.classe || 'Sconosciuto',
+      data: order.data,
+      prodotti: Array.isArray(order.prodotti) ? order.prodotti : [],
+      confermato: order.confermato === undefined ? true : order.confermato,
+      oraRitiro: order.oraRitiro,
+      userData: order.userData
+    }));
+  } else {
+    // For other turnos, fetch class orders
+    await fetchClassOrders()
+  }
 })
 </script>
 
@@ -248,8 +387,7 @@ onMounted(async () => {
       <button @click="turnoStore.fetchTurni().then(() => { fetchClassOrders(); fetchProfOrders(); })">Riprova</button>
     </div>
 
-    <div v-else>
-      <!-- Date selector -->
+    <div v-else>      <!-- Date selector -->
       <div class="date-selector">
         <label for="order-date">Data Ordini:</label>
         <input 
@@ -266,6 +404,7 @@ onMounted(async () => {
         v-if="showProfessorTimeline"
         :profOrders="profOrders" 
         :turnoTimes="selectedTurnoTimes"
+        @reload="fetchProfOrders"
       />
 
       <!-- Orders section (bottom) -->

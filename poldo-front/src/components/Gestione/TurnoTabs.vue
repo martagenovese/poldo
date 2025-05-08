@@ -1,8 +1,7 @@
-<template>
-  <div class="turno-tabs">
-    <!-- Only show available turni, filtering out turno 2 -->
+<template>  <div class="turno-tabs">
+    <!-- Changed to show all turni, including turno 2 for professors -->
     <button 
-      v-for="turno in availableTurni.filter(t => t.n !== 2)" 
+      v-for="turno in availableTurni" 
       :key="turno.n" 
       class="turno-tab" 
       :class="{ 'active': selectedTurno === turno.n }"
@@ -41,6 +40,11 @@ defineEmits(['turnoChange'])
 
 // Simplified getTurnoName function - just use the nome property directly
 const getTurnoName = (turno: Turno): string => {
+  // If turno 2, label it clearly as Professor orders
+  if (turno.n === 2) {
+    return turno.nome || 'Turno Professori';
+  }
+  
   // If the nome property exists, use it
   if (turno.nome) {
     return turno.nome
