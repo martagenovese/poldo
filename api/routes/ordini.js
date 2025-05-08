@@ -57,7 +57,7 @@ router.get('/',
             if (startDate && endDate) {
                 query += ` AND os.data BETWEEN ? AND ?`;
                 params.push(startDate, endDate);
-            } else if (!startDate && !endDate) {
+            } else if (!startDate || !endDate) {
                 query += ` AND os.data = CURDATE()`;
             }
 
@@ -87,7 +87,7 @@ router.get('/',
 
             const result = orders.map(order => ({
                 ...order,
-                data: formatDate(order.data),
+                data: order.data,
                 prodotti: order.prodotti
             }));
 
@@ -177,7 +177,7 @@ router.get('/classi',
 
             const formatted = results.map(row => ({
                 classe: row.classe,
-                data: formatDate(row.data),
+                data: row.data,
                 prodotti: row.prodotti
             }));
 
