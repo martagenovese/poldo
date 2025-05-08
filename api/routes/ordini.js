@@ -377,19 +377,20 @@ router.post('/',
             let nTurno;
             if (userRole === 'studente' || userRole === 'paninaro') {
                 nTurno = parseInt(bodyTurno, 10);
-                if (![1, 2].includes(nTurno)) {
-                    await connection.rollback();
-                    return res.status(400).json({ error: 'Turno non valido per studenti' });
-                }
 
                 const [turno] = await connection.query(`
-                    SELECT oraInizioOrdine, oraFineOrdine FROM Turno 
+                    SELECT oraInizioOrdine, oraFineOrdine, studente FROM Turno 
                     WHERE n = ? AND giorno = ?
                 `, [nTurno, giorno]);
 
                 if (turno.length === 0) {
                     await connection.rollback();
                     return res.status(400).json({ error: 'Turno non disponibile' });
+                }
+
+                if (userRole === 'studente' && turno[0]?.studente === 0) {
+                    await connection.rollback();
+                    return res.status(400).json({ error: 'Turno non valido per studenti' });
                 }
 
                 const oraCorrente = new Date().toLocaleTimeString('it-IT', { 
