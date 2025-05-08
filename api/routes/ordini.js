@@ -285,7 +285,8 @@ router.get('/classi/me/oggi',
         } finally {
             connection.release();
         }
-    });
+    }
+);
 
 // Ottieni i propri ordini
 router.get('/me',
@@ -645,7 +646,7 @@ router.patch('/classi/me/conferma/:id',
     }
 );
 
-// Conferma ordini individuali e crea ordine di classe
+// Crea ordine di classe
 router.put('/classi/me/conferma',
     authenticateJWT,
     authorizeRole(['paninaro']),
@@ -699,6 +700,9 @@ router.put('/classi/me/conferma',
                 WHERE idOrdine IN (?)`,
                 [nuovoOrdineClasse.insertId, ordiniDaConfermare.map(o => o.idOrdine)]
             );
+
+            //inserire un qr-code per ordineclasse, gestione se contiene almeno un prodotto di quella gestione
+
 
             await connection.commit();
             res.json({ 

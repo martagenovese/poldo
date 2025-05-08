@@ -5,7 +5,7 @@
 ```mysql
 CREATE TABLE Classe (
     id INT AUTO_INCREMENT PRIMARY KEY,
-     uni varCHAR(3) NOT NULL UNIQUE
+    nome varCHAR(3) NOT NULL UNIQUE
 );
 
 CREATE TABLE Utente (
@@ -15,6 +15,7 @@ CREATE TABLE Utente (
     bannato BOOLEAN NOT NULL DEFAULT false,
     google_id VARCHAR(50) NOT NULL UNIQUE,
     foto_url VARCHAR(255) UNIQUE,
+    nome varchar(100) not null,
     ruolo ENUM('admin', 'terminale', 'prof', 'segreteria', 'paninaro', 'studente') NOT NULL,
     FOREIGN KEY (classe) REFERENCES Classe(id)
 );
@@ -26,6 +27,8 @@ CREATE TABLE Turno (
     oraFineOrdine TIME NOT NULL,
     oraInizioRitiro TIME NOT NULL,
     oraFineRitiro TIME NOT NULL,
+    nome varchar(100) not null,
+    studenti bool not null default true,
     PRIMARY KEY(n, giorno)
 );
 
