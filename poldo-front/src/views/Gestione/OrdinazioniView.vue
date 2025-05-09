@@ -224,28 +224,6 @@ const handleTurnoChange = async (turno: number) => {
   }
 }
 
-// Gestione cambio data
-const handleDateChange = async (event: Event) => {
-  const newDate = (event.target as HTMLInputElement).value
-  selectedDate.value = newDate
-  
-  await fetchProfOrders()
-  
-  if (selectedTurno.value === 2) {
-    classOrders.value = profOrders.value.map(order => ({
-      ...order,
-      classe: order.classe || 'Sconosciuto',
-      data: order.data,
-      prodotti: Array.isArray(order.prodotti) ? order.prodotti : [],
-      confermato: order.confermato === undefined ? true : order.confermato,
-      oraRitiro: order.oraRitiro,
-      userData: order.userData
-    }));
-    console.log("Aggiornato classOrders con i dati dei professori:", classOrders.value.length);
-  } else {
-    await fetchClassOrders()
-  }
-}
 
 // Lifecycle
 onMounted(async () => {
@@ -290,17 +268,6 @@ onMounted(async () => {
     </div>
 
     <div v-else>
-      <!-- Selettore data -->
-      <div class="date-selector">
-        <label for="order-date">Data Ordini:</label>
-        <input 
-          type="date" 
-          id="order-date" 
-          :value="selectedDate" 
-          @change="handleDateChange"
-          class="date-input"
-        />
-      </div>
 
       <!-- Timeline per gli ordini dei professori -->
       <ProfessorTimeline 
@@ -387,27 +354,6 @@ h1 {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-}
-
-.date-selector {
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.date-selector label {
-  font-weight: 500;
-  color: var(--poldo-primary);
-}
-
-.date-input {
-  padding: 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  width: 200px;
-  background-color: var(--card-bg);
-  color: var(--poldo-text);
 }
 
 .orders-section {
