@@ -93,7 +93,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 
-// Define interfaces for component
+// Definisce le interfacce per il componente
 interface Product {
   idProdotto: number;
   nome: string;
@@ -121,7 +121,7 @@ interface TimelineOrder extends Order {
   position: number;
 }
 
-// Define props with proper types
+// Definisce le props con tipi appropriati
 const props = defineProps({
   profOrders: {
     type: Array as () => Order[],
@@ -130,7 +130,7 @@ const props = defineProps({
   turnoTimes: {
     type: Object as () => TurnoTimes | null,
     required: true,
-    // Provide default value to avoid null errors
+    // Fornisce un valore predefinito per evitare errori null
     default: () => ({
       orderStart: '08:00',
       orderEnd: '10:00',
@@ -140,67 +140,67 @@ const props = defineProps({
   }
 })
 
-// Define emit events
+// Definisce gli eventi emessi
 const emit = defineEmits(['reload'])
 
-// Current time management
+// Gestione dell'ora corrente
 const currentTime = ref(new Date())
 const timelineRef = ref<HTMLElement | null>(null)
 let timeUpdateInterval: number | undefined
 
-// Function to update current time
+// Funzione per aggiornare l'ora corrente
 const updateCurrentTime = () => {
   currentTime.value = new Date()
 }
 
-// Format time from database format to display format (HH:MM)
+// Formatta l'orario dal formato del database al formato di visualizzazione (HH:MM)
 const formatTime = (time: string | number) => {
   if (!time) {
-    console.warn('Empty time passed to formatTime');
+    console.warn('Orario vuoto passato a formatTime');
     return '';
   }
   
   try {
     
-    // If time is a number, convert to string first
+    // Se l'orario è un numero, convertilo prima in stringa
     if (typeof time === 'number') {
       time = time.toString();
     } else if (typeof time !== 'string') {
-      // If time is not a string or number, fallback to empty string
+      // Se l'orario non è una stringa o un numero, torna a stringa vuota
       time = '';
     }
     
-    // Ensure we're working with a string
+    // Assicurati di lavorare con una stringa
     const timeStr = String(time);
     
-    // If time includes seconds (HH:MM:SS), remove them
+    // Se l'orario include i secondi (HH:MM:SS), rimuovili
     if (timeStr.includes(':')) {
       const parts = timeStr.split(':');
       if (parts.length >= 2) {
-        // Ensure hours and minutes are two digits
+        // Assicurati che ore e minuti siano a due cifre
         const hours = parts[0].padStart(2, '0');
         const minutes = parts[1].padStart(2, '0');
         return `${hours}:${minutes}`;
       }
     }
     
-    // If time is in format HHMM (e.g., 1430), convert to HH:MM
+    // Se l'orario è nel formato HHMM (es. 1430), convertilo in HH:MM
     if (timeStr.length === 4 && !timeStr.includes(':') && !isNaN(Number(timeStr))) {
       return `${timeStr.substring(0, 2)}:${timeStr.substring(2, 4)}`;
     }
     
-    // If time is just an hour (e.g., '14'), add minutes
+    // Se l'orario è solo un'ora (es. "14"), aggiungi i minuti
     if (timeStr.length <= 2 && !isNaN(Number(timeStr))) {
       return `${timeStr.padStart(2, '0')}:00`;
     }
     
-    // If time contains a dot instead of colon (e.g., '14.30')
+    // Se l'orario contiene un punto invece di due punti (es. "14.30")
     if (timeStr.includes('.')) {
       const [hours, minutes] = timeStr.split('.');
       return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
     }
     
-    // Last resort: try to extract digits and format them
+    // Ultima risorsa: prova a estrarre le cifre e formattarle
     const digits = timeStr.replace(/[^0-9]/g, '');
     if (digits.length >= 3) {
       const hours = digits.substring(0, 2);
@@ -208,62 +208,62 @@ const formatTime = (time: string | number) => {
       return `${hours}:${minutes}`;
     }
     
-    console.warn(`Unable to format time: "${time}"`);
+    console.warn(`Impossibile formattare l'orario: "${time}"`);
     return timeStr;
   } catch (error) {
-    console.error('Error formatting time:', time, error);
+    console.error('Errore nella formattazione dell\'orario:', time, error);
     return String(time) || '';
   }
 }
 
-// Convert a time string (HH:MM) to minutes since midnight
+// Converte una stringa di orario (HH:MM) in minuti dalla mezzanotte
 const timeToMinutes = (timeString: string): number => {
   if (!timeString) {
-    console.warn('Empty time string passed to timeToMinutes');
+    console.warn('Stringa di orario vuota passata a timeToMinutes');
     return 0;
   }
   
   try {
-    // If already in HH:MM format, simply convert to minutes
+    // Se già nel formato HH:MM, semplicemente converti in minuti
     if (timeString.includes(':')) {
       const [hours, minutes] = timeString.split(':').map(Number);
       if (isNaN(hours) || isNaN(minutes)) {
-        console.warn(`Invalid HH:MM format in "${timeString}"`);
+        console.warn(`Formato HH:MM non valido in "${timeString}"`);
         return 0;
       }
       return hours * 60 + (minutes || 0);
     }
     
-    // If in HHMM format (e.g., "1430")
+    // Se nel formato HHMM (es. "1430")
     if (timeString.length === 4 && !timeString.includes(':') && !isNaN(Number(timeString))) {
       const hours = Number(timeString.substring(0, 2));
       const minutes = Number(timeString.substring(2, 4));
       if (isNaN(hours) || isNaN(minutes)) {
-        console.warn(`Invalid HHMM format in "${timeString}"`);
+        console.warn(`Formato HHMM non valido in "${timeString}"`);
         return 0;
       }
       return hours * 60 + minutes;
     }
     
-    // If just hours (e.g., "14")
+    // Se solo ore (es. "14")
     if (timeString.length <= 2 && !isNaN(Number(timeString))) {
       const hours = Number(timeString);
       return hours * 60;
     }
     
-    // If it's something like "12.30" (with dot instead of colon)
+    // Se è qualcosa come "12.30" (con punto invece di due punti)
     if (timeString.includes('.')) {
       const [hours, minutes] = timeString.split('.').map(Number);
       if (isNaN(hours) || isNaN(minutes)) {
-        console.warn(`Invalid hours.minutes format in "${timeString}"`);
+        console.warn(`Formato ore.minuti non valido in "${timeString}"`);
         return 0;
       }
       return hours * 60 + minutes;
     }
     
-    console.warn(`Unrecognized time format: "${timeString}"`);
+    console.warn(`Formato orario non riconosciuto: "${timeString}"`);
     
-    // Last resort: try to extract numbers and use them
+    // Ultima risorsa: prova a estrarre i numeri e usarli
     const numbersOnly = timeString.replace(/[^0-9]/g, '');
     if (numbersOnly.length >= 3) {
       const hours = Number(numbersOnly.substring(0, 2));
@@ -273,101 +273,87 @@ const timeToMinutes = (timeString: string): number => {
     
     return 0;
   } catch (error) {
-    console.error(`Error parsing time "${timeString}":`, error);
+    console.error(`Errore nell'analisi dell'orario "${timeString}":`, error);
     return 0;
   }
 }
 
-// Calculate the position on the timeline based on time
+// Calcola la posizione sulla timeline in base all'orario
 const calculateTimePosition = (time: string): number => {
-  const startTime = 7 * 60; // 7:00 AM in minutes
-  const endTime = 19 * 60; // 7:00 PM in minutes
+  // Usa un intervallo più ampio per la timeline (7:00 AM a 3:00 PM)
+  const startTime = 7 * 60; // 7:00 in minuti
+  const endTime = 15 * 60; // 15:00 in minuti
   const timeInMinutes = timeToMinutes(time);
-  
-  // Handle edge cases
-  if (timeInMinutes < startTime) {
-    console.warn(`Time ${time} (${timeInMinutes} mins) is before timeline start (${startTime} mins)`);
-    return 0; // Place at the start of the timeline
-  }
-  
-  if (timeInMinutes > endTime) {
-    console.warn(`Time ${time} (${timeInMinutes} mins) is after timeline end (${endTime} mins)`);
-    return 100; // Place at the end of the timeline
-  }
-  
-  // Calculate position as percentage
+    
+  // Calcola la posizione come percentuale
   return Math.max(0, Math.min(100, ((timeInMinutes - startTime) / (endTime - startTime)) * 100));
 }
 
-// Calculated time slots for the timeline
+// Slot temporali calcolati per la timeline
 const timelineSlots = computed(() => {
   const slots = []
-  // Expand the timeframe to start earlier and end later for more visibility
-  for (let hour = 7; hour <= 19; hour++) {
+  // Crea slot per ogni mezz'ora dalle 7:00 alle 15:00 (3 PM)
+  for (let hour = 7; hour <= 15; hour++) {
+    // Aggiungi l'ora intera
     slots.push({
       time: `${hour}:00`,
       position: calculateTimePosition(`${hour}:00`),
       label: `${hour}:00`
     })
+    
+    // Aggiungi la mezz'ora (tranne per l'ultima ora)
+    if (hour < 15) {
+      slots.push({
+        time: `${hour}:30`,
+        position: calculateTimePosition(`${hour}:30`),
+        label: `${hour}:30`
+      })
+    }
   }
   return slots
 })
 
-// Calculate the current time position for the indicator
+// Calcola la posizione dell'ora corrente per l'indicatore
 const currentTimePosition = computed(() => {
   const now = currentTime.value
   const timeString = `${now.getHours()}:${now.getMinutes()}`
   return calculateTimePosition(timeString)
 })
 
-// Organize professor orders by time
-const timelineProfOrders = computed<TimelineOrder[]>(() => {
-  console.log("Computing timelineProfOrders with:", {
-    count: props.profOrders?.length || 0,
-    withRitiro: props.profOrders?.filter(o => o && o.oraRitiro)?.length || 0,
-    firstOrder: props.profOrders?.length > 0 ? {
-      id: props.profOrders[0].idOrdine,
-      ritiro: props.profOrders[0].oraRitiro,
-      rawRitiro: JSON.stringify(props.profOrders[0].oraRitiro),
-      ritiroType: typeof props.profOrders[0].oraRitiro,
-      userData: props.profOrders[0].userData ? 
-        `${props.profOrders[0].userData.cognome}` : 'no userData'
-    } : 'no orders',
-    turnoTimes: props.turnoTimes
-  });
-  
+// Organizza gli ordini dei professori per orario
+const timelineProfOrders = computed<TimelineOrder[]>(() => { 
   if (!Array.isArray(props.profOrders)) {
-    console.warn("profOrders is not an array");
+    console.warn("profOrders non è un array");
     return [];
   }
   
   if (props.profOrders.length === 0) {
-    console.warn("No professor orders to display");
+    console.warn("Nessun ordine di professori da visualizzare");
     return [];
   }
   
-  // Filter orders to only those with oraRitiro
+  // Filtra gli ordini solo per quelli con oraRitiro
   const ordersWithRitiro = props.profOrders.filter(order => 
     order && typeof order === 'object' && order.oraRitiro !== undefined && order.oraRitiro !== null
   );
   
   
   if (ordersWithRitiro.length === 0) {
-    console.warn("No orders with ritiro found");
+    console.warn("Nessun ordine con ritiro trovato");
     return [];
   }
     return ordersWithRitiro.map(order => {
     try {
-      // Use the order's pickup time
+      // Usa l'orario di ritiro dell'ordine
       const pickupTime = formatTime(order.oraRitiro || '');
       const position = calculateTimePosition(pickupTime);
       
       if (isNaN(position) || position < 0 || position > 100) {
-        console.error(`Invalid position for order ${order.idOrdine}:`, position);
-        // Try to recover with a default position in the visible range
+        console.error(`Posizione non valida per l'ordine ${order.idOrdine}:`, position);
+        // Prova a recuperare con una posizione predefinita nell'intervallo visibile
         return {
           ...order,
-          position: 50 // Place in middle of timeline
+          position: 50 // Posiziona al centro della timeline
         };
       }
       
@@ -376,17 +362,17 @@ const timelineProfOrders = computed<TimelineOrder[]>(() => {
         position: position
       };
     } catch (error) {
-      console.error('Error processing order:', error, order);
-      // Return a default position if there's an error
+      console.error('Errore nell\'elaborazione dell\'ordine:', error, order);
+      // Restituisci una posizione predefinita se c'è un errore
       return {
         ...order,
-        position: 50 // Place in middle of timeline if there's an error
+        position: 50 // Posiziona al centro della timeline se c'è un errore
       };
     }
   });
 })
 
-// Calculate total price for an order
+// Calcola il prezzo totale per un ordine
 const calculateOrderTotal = (order: Order): number => {
   if (!order.prodotti || !Array.isArray(order.prodotti)) return 0
   
@@ -397,38 +383,38 @@ const calculateOrderTotal = (order: Order): number => {
   }, 0)
 }
 
-// Format price as currency
+// Formatta il prezzo come valuta
 const formatCurrency = (amount: number): string => {
   return `€${amount.toFixed(2)}`
 }
 
-// Get user display name from user data or fallback to class
+// Ottieni il nome di visualizzazione dell'utente dai dati utente o torna alla classe
 const getUserDisplayName = (order: any): string => {
-  // If we have userData, use the user's name from that
+  // Se abbiamo userData, usa il nome dell'utente da quello
   if (order.userData && (order.userData.nome || order.userData.cognome)) {
     return `Prof. ${order.userData.cognome || ''} ${order.userData.nome || ''}`.trim();
   }
   
-  // Fallback to classe if available
+  // Fallback alla classe se disponibile
   if (order.classe) {
     return `Prof. ${order.classe}`;
   }
   
-  // Last resort - show user ID if available
+  // Ultima risorsa - mostra l'ID utente se disponibile
   if (order.user) {
     return `Prof. #${order.user}`;
   }
   
-  // If all else fails
+  // Se tutto il resto fallisce
   return 'Professore sconosciuto';
 }
 
 onMounted(() => {
-  // Set up timer to update current time
+  // Imposta un timer per aggiornare l'ora corrente
   updateCurrentTime()
-  timeUpdateInterval = window.setInterval(updateCurrentTime, 60000) // Update every minute
+  timeUpdateInterval = window.setInterval(updateCurrentTime, 60000) // Aggiorna ogni minuto
   
-  // Scroll the timeline to position the current time indicator at around 20%
+  // Scorri la timeline per posizionare l'indicatore dell'ora corrente a circa il 20%
   setTimeout(() => {
     if (timelineRef.value) {
       const timelineWidth = timelineRef.value.scrollWidth
@@ -436,11 +422,11 @@ onMounted(() => {
       const scrollPosition = (currentTimePosition.value / 100 * timelineWidth) - (viewportWidth * 0.2)
       timelineRef.value.scrollLeft = Math.max(0, scrollPosition)
     }
-  }, 500) // Small delay to ensure the DOM is ready
+  }, 500) // Piccolo ritardo per assicurarsi che il DOM sia pronto
 })
 
 onUnmounted(() => {
-  // Clear the interval when component is unmounted
+  // Cancella l'intervallo quando il componente viene smontato
   if (timeUpdateInterval) {
     clearInterval(timeUpdateInterval)
   }

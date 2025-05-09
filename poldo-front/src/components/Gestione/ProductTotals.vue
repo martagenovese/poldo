@@ -16,7 +16,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-// Define interfaces for component
 interface Product {
   idProdotto: number;
   nome: string;
@@ -27,10 +26,8 @@ interface Product {
 interface ClassOrder {
   classe: string;
   prodotti: Product[];
-  // Other properties may be present
 }
 
-// Define props with better type definition
 const props = defineProps({
   classOrders: {
     type: Array as () => ClassOrder[],
@@ -39,23 +36,20 @@ const props = defineProps({
   }
 })
 
-// Get unique products from all class orders with error handling
 const uniqueProducts = computed(() => {
   const products = new Map()
   
   if (!Array.isArray(props.classOrders)) {
-    console.error('classOrders is not an array:', props.classOrders)
+    console.error('classOrders non è un array:', props.classOrders)
     return []
   }
   
   props.classOrders.forEach(order => {
-    // Verify the order has a prodotti property that is an array
     if (!order || !Array.isArray(order.prodotti)) {
       return
     }
     
     order.prodotti.forEach(product => {
-      // Skip products without an ID
       if (product.idProdotto === undefined) {
         return
       }
@@ -73,20 +67,17 @@ const uniqueProducts = computed(() => {
   return Array.from(products.values())
 })
 
-// Calculate total quantity for a product across all classes with error handling
 const getTotalQuantity = (productId: number): number => {
   if (!Array.isArray(props.classOrders)) {
     return 0
   }
   
   return props.classOrders.reduce((total, order) => {
-    // Skip orders without prodotti array
     if (!order || !Array.isArray(order.prodotti)) {
       return total
     }
     
     const product = order.prodotti.find(p => p.idProdotto === productId)
-    // Make sure quantita is a number, default to 0 if not
     const quantity = product && typeof product.quantita === 'number' ? product.quantita : 0
     
     return total + quantity

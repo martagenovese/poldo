@@ -1,5 +1,5 @@
-<template>  <div class="turno-tabs">
-    <!-- Changed to show all turni, including turno 2 for professors -->
+<template>
+  <div class="turno-tabs">
     <button 
       v-for="turno in availableTurni" 
       :key="turno.n" 
@@ -13,7 +13,6 @@
 </template>
 
 <script setup lang="ts">
-// Define the Turno interface
 interface Turno {
   n: number
   oraInizio: string
@@ -23,7 +22,6 @@ interface Turno {
   nome: string
 }
 
-// Define props with proper types
 const props = defineProps({
   availableTurni: {
     type: Array as () => Turno[],
@@ -35,22 +33,17 @@ const props = defineProps({
   }
 })
 
-// Define emits
 defineEmits(['turnoChange'])
 
-// Simplified getTurnoName function - just use the nome property directly
 const getTurnoName = (turno: Turno): string => {
-  // If turno 2, label it clearly as Professor orders
   if (turno.n === 2) {
     return turno.nome || 'Turno Professori';
   }
   
-  // If the nome property exists, use it
   if (turno.nome) {
     return turno.nome
   }
   
-  // Fallback in case nome is missing
   return `Turno ${turno.n}`
 }
 </script>

@@ -11,11 +11,9 @@
         class="class-card"
       >
         <h4>
-          <!-- If turno is 2 (for professors), display as professor name -->
           <span v-if="selectedTurno === 2">
             Prof. {{ order.classe || 'Sconosciuto' }}
           </span>
-          <!-- Otherwise display as class -->
           <span v-else>
             Classe {{ order.classe || 'Sconosciuta' }}
           </span>
@@ -44,10 +42,8 @@ import { computed } from 'vue'
 import Card from '@/components/Card.vue'
 import { useTurnoStore } from '@/stores/turno'
 
-// Initialize the turno store
 const turnoStore = useTurnoStore()
 
-// Define interfaces for the component
 interface Product {
   idProdotto?: number;
   nome?: string;
@@ -62,7 +58,6 @@ interface ClassOrder {
   confermato?: boolean;
 }
 
-// Define props with proper type definitions and defaults
 const props = defineProps({
   classOrders: {
     type: Array as () => ClassOrder[],
@@ -76,24 +71,18 @@ const props = defineProps({
   }
 })
 
-// Generate a unique key for products without ID
 let keyCounter = 0
 const generateKey = (item: any): string => {
   return `item_${keyCounter++}_${Date.now()}`
 }
 
-// Create a computed property that ensures safe access to classOrders
 const safeClassOrders = computed<ClassOrder[]>(() => {
   if (!Array.isArray(props.classOrders)) {
-    console.warn('classOrders is not an array:', props.classOrders)
+    console.warn('classOrders non è un array:', props.classOrders)
     return []
   }
   
-  console.log("ClassOrders component received:", props.classOrders.length, "orders", props.classOrders)
-  
-  // Filter out any invalid orders and ensure all required properties exist
   return props.classOrders.filter(order => order && typeof order === 'object').map(order => {
-    // Ensure prodotti is an array
     const prodotti = Array.isArray(order.prodotti) 
       ? order.prodotti.filter(p => p && typeof p === 'object')
       : []
@@ -106,11 +95,9 @@ const safeClassOrders = computed<ClassOrder[]>(() => {
   })
 })
 
-// Format time from database format to display format (HH:MM)
 const formatTime = (time?: string): string => {
   if (!time) return ''
   
-  // If time includes seconds (HH:MM:SS), remove them
   if (time.includes(':')) {
     const parts = time.split(':')
     if (parts.length >= 2) {
@@ -121,22 +108,17 @@ const formatTime = (time?: string): string => {
   return time
 }
 
-// Determine the appropriate title based on selected turno
 const orderTypeTitle = computed(() => {
-  // Find the selected turno in the store
   const turno = turnoStore.turni.find(t => t.n === props.selectedTurno)
   
-  // If we have the turno with a name, use it
   if (turno && turno.nome) {
     return `Ordini ${turno.nome}`
   }
   
-  // Special case for professors (turno 2)
   if (props.selectedTurno === 2) {
     return 'Ordini Professori'
   }
   
-  // Fallback 
   return 'Ordini per Classe'
 })
 </script>
