@@ -26,7 +26,7 @@ router.get('/', authenticateJWT, authorizeRole(['admin']),
     async (req, res) => {
         const connection = await pool.getConnection();
         try {
-            const { startDate, endDate, nTurno, user, confermato, preparato, studente } = req.query;
+            const { startDate, endDate, nTurno, user, confermato, preparato } = req.query;
 
             let query = `
                 SELECT
@@ -842,6 +842,67 @@ router.put('/classi/:classe/turno/:turno/prepara',
 
         } catch (error) {
             console.error('Errore nel preparare ordine di classe:', error);
+            res.status(500).json({ error: 'Errore del database' });
+        } finally {
+            connection.release();
+        }
+    }
+);
+
+// Ottieni tutti i prodotti con le relative quantità
+router.get('/prodotti',
+    authenticateJWT,
+    authorizeRole(['admin', 'gestore']),
+    async (req, res) => {
+        const connection = await pool.getConnection();
+        try {
+            const { startDate, endDate, nTurno } = req.query;
+            
+            let query = `
+                SELECT 
+                    p.idProdotto,
+                    p.nome,
+                    p.prezzo,
+                    p.descrizione,
+                    SUM(dos.quantita) as quantitaOrdinata
+                FROM Prodotto p
+                LEFT JOIN DettagliOrdineSingolo dos ON p.idProdotto = dos.idProdotto
+                LEFT JOIN OrdineSingolo os ON dos.idOrdineSingolo = os.idOrdine
+                WHERE 1=1
+            `;
+
+            const params = [];
+
+            if (startDate && endDate) {
+                query += ` AND os.data BETWEEN ? AND ?`;
+                params.push(startDate, endDate);
+            } else {
+                query += ` AND os.data = CURDATE()`;
+            }
+
+            if (nTurno) {
+                query += ` AND os.nTurno = ?`;
+                params.push(nTurno);
+            }
+
+            query += ` GROUP BY p.idProdotto
+                       ORDER BY quantitaOrdinata DESC, p.nome ASC`;
+
+            const [products] = await connection.execute(query, params);
+
+            const formattedProducts = products.map(product => ({
+                idProdotto: product.idProdotto,
+                nome: product.nome,
+                prezzo: product.prezzo,
+                descrizione: product.descrizione,
+                img: product.img,
+                quantitaOrdinata: product.quantitaOrdinata || 0, 
+            }));
+
+            res.json(formattedProducts);
+
+        } catch (error) {
+            console.error('Errore nel recupero prodotti e quantità:', error);
             res.status(500).json({ error: 'Errore del database' });
         } finally {
             connection.release();
