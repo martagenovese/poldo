@@ -905,7 +905,7 @@ router.get('/prodotti',
     async (req, res) => {
         const connection = await pool.getConnection();
         try {
-            const { startDate, endDate, nTurno } = req.query;
+            const { startDate, endDate, nTurno, isProf } = req.query;
               let query = `
                 SELECT 
                     p.idProdotto,
@@ -938,6 +938,9 @@ router.get('/prodotti',
                 query += ` AND os.nTurno = ?`;
                 params.push(nTurno);
             }
+
+            if (isProf) query += ` AND oc.oraRitiro IS NOT NULL`;
+            else query += ` AND oc.oraRitiro IS NULL`;
 
             query += ` GROUP BY p.idProdotto
                        ORDER BY quantitaOrdinata DESC, p.nome ASC`;
