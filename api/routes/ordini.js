@@ -817,4 +817,35 @@ router.get('/classi/:classe',
     }
 );
 
+router.put('/classi/:classe/turno/:turno/prepara',
+    authenticateJWT,
+    authorizeRole(['admin', 'gestore']),
+    async (req, res) => {
+        const connection = await pool.getConnection();
+        try {
+            const { classe } = req.params;
+            const { turno } = req.params;
+            
+            if (!turno || !classe) {
+                return res.status(400).json({ error: 'Parametri turno e classe mancanti' });
+            }
+            
+            await connection.query(`
+                UPDATE OrdineClasse 
+                SET preparato = TRUE 
+                WHERE nTurno = ? AND classe = ? and data = CURDATE()`,
+                [turno, classe]
+            );
+
+            res.json({ success: true });
+
+        } catch (error) {
+            console.error('Errore nel preparare ordine di classe:', error);
+            res.status(500).json({ error: 'Errore del database' });
+        } finally {
+            connection.release();
+        }
+    }
+);
+
 module.exports = router;
