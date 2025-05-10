@@ -210,7 +210,7 @@ const router = useRouter()
 
 // Handle click on timeline to navigate to the specialized view
 const handleTimelineClick = () => {
-  router.push('/gestione/ordinazioni-prof')
+  router.push('/gestione/ordinazioni/prof')
 }
 </script>
 

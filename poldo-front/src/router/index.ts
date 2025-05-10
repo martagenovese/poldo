@@ -44,7 +44,7 @@ const router = createRouter({
       component: OrdinazioniView,
     },
     {
-      path: '/gestione/ordinazioni-prof',
+      path: '/gestione/ordinazioni/prof',
       name: 'ordinazioniProf',
       component: OrdinazioniProf,
     }
