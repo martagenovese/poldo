@@ -28,7 +28,7 @@ router.get('/',
     async (req, res) => {
         const connection = await pool.getConnection();
         try {
-            const { startDate, endDate, nTurno, user, confermato, preparato } = req.query;
+            const { startDate, endDate, nTurno, user, confermato, preparato, studente } = req.query;
 
             let query = `
                 SELECT
@@ -41,6 +41,7 @@ router.get('/',
                     oc.confermato,
                     oc.preparato,
                     oc.oraRitiro,
+                    oc.studente,
                     JSON_ARRAYAGG(
                         JSON_OBJECT(
                             'idProdotto', p.idProdotto,
@@ -83,6 +84,11 @@ router.get('/',
             if (preparato === '0' || preparato === '1') {
                 query += ` AND oc.preparato = ?`;
                 params.push(Number(preparato));
+            }
+
+            if (studente === '0' || studente === '1') {
+                query += ' AND oc.studente = ?';
+                params.push(Number(studente));
             }
           
             query += ` GROUP BY os.idOrdine ORDER BY os.data DESC, os.idOrdine DESC`;
