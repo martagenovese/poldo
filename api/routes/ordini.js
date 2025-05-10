@@ -274,7 +274,7 @@ router.get('/classi/me/oggi',
                 return order.confermato ? acc + Number(order.totale) : acc
             }, 0).toFixed(2); 
 
-            const confermatoClasse = orders[0].confermatoClasse === undefined ? false : true;
+            const confermatoClasse = orders[0].confermatoClasse === null ? false : true;
 
             const formattedOrders = orders.map(order => ({
                 idOrdine: order.idOrdine,
@@ -387,7 +387,7 @@ router.post('/',
 
             const giorniEnum = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
             const giorno = giorniEnum[new Date().getDay()];
-            const giorniValidi = ['lun', 'mar', 'mer', 'gio', 'ven'];
+            const giorniValidi = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom']; //TODO: togliere sab e dom
 
             if (!giorniValidi.includes(giorno)) {
                 await connection.rollback();
