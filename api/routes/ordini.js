@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../utils/db');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
+const { v4: uuidv4 } = require('uuid');
 
 // Funzione di supporto per analizzare JSON in modo sicuro
 const parseJSON = (data) => {
@@ -20,6 +21,22 @@ const formatDate = (date) => {
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 };
+
+// Funzione di supporto per generare un codice QR unico
+const genQr = async (connection) => {
+    const qrCode = uuidv4().replace(/-/g, '');
+    const exists = await checkQRIfExists(connection, qrCode);
+    if (exists) {
+        return await genQr(connection); // ricorsione in caso di duplicato
+    }
+    return qrCode; // restituisce direttamente la stringa
+};
+
+
+const checkQRIfExists = async (connection, qrCode) => {
+    const [rows] = await connection.query('SELECT * FROM QrCode WHERE token = ?', [qrCode]);
+    return rows.length > 0;
+}
 
 // Ottieni tutti gli ordini individuali
 router.get('/',
@@ -665,6 +682,11 @@ router.put('/classi/me/conferma',
                 [paninaroId]
             );
 
+            if(nTurno === undefined) {
+                await connection.rollback();
+                return res.status(400).json({ error: 'Parametro nTurno obbligatorio' });
+            }
+
             if (!classePaninaro[0]?.classe) {
                 await connection.rollback();
                 return res.status(403).json({ error: 'Paninaro non assegnato a nessuna classe' });
@@ -701,7 +723,36 @@ router.put('/classi/me/conferma',
                 [nuovoOrdineClasse.insertId, ordiniDaConfermare.map(o => o.idOrdine)]
             );
 
-            //inserire un qr-code per ordineclasse, gestione se contiene almeno un prodotto di quella gestione
+
+            const [gestioni] = await connection.query(`
+                SELECT DISTINCT p.proprietario
+                FROM Prodotto p
+                JOIN DettagliOrdineSingolo dos ON p.idProdotto = dos.idProdotto
+                JOIN OrdineSingolo os ON dos.idOrdineSingolo = os.idOrdine
+                JOIN OrdineClasse oc ON os.idOrdineClasse = oc.idOrdine
+                WHERE oc.idOrdine = ?
+                AND os.confermato = TRUE
+                `, nuovoOrdineClasse.insertId
+            );
+            
+            console.log('gestioni', gestioni);
+            gestioni.map(gest => {
+                console.log('gest', gest);
+            });
+
+            await Promise.all(
+                gestioni.map(async gest => {
+                    const qrCode = await genQr(connection);
+                    console.log('qrCode', qrCode);
+                    await connection.query(`
+                        INSERT INTO QrCode (token, idOrdineClasse, gestore)
+                        VALUES (?, ?, ?)`,
+                        [qrCode, nuovoOrdineClasse.insertId, gest.proprietario]
+                    );
+                })
+            );
+
+            
 
 
             await connection.commit();
@@ -723,7 +774,6 @@ router.put('/classi/me/conferma',
         }
     }
 );
-
 
 
 // Ottieni ordini di classe raggruppati per nome di classe specifico
