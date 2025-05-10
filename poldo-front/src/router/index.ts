@@ -5,6 +5,7 @@ import CarrelloView from '../views/CarrelloView.vue'
 import { useTurnoStore } from '../stores/turno'
 import NewProdottiView from '../views/Gestione/NewProdottiView.vue'
 import ModificaView from '../views/Gestione/ProdottiView.vue'
+import QRView from '../views/QrView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -25,6 +26,11 @@ const router = createRouter({
       name: 'carrello',
       component: CarrelloView,
       meta: { requiresTurno: true }
+    },{
+        path: '/qr',
+        name: 'QRCode',
+        component: QRView,
+        meta: { requiresTurno: true }
     },
     {
       path: '/inserisciprodotto',

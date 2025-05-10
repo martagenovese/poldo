@@ -4,6 +4,7 @@ import { useProductsStore } from '@/stores/products'
 import Alert from '@/components/Alert.vue'
 import QuantityControl from '@/components/ControlloQuantitaProdotto.vue'
 import type { OrdineClasse } from '@/stores/cartClasse'
+import QRModal from '@/components/QRModal.vue'
 
 import { computed, ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -21,6 +22,8 @@ const isconf = ref<{id: number, isConf: boolean}[]>([])
 const haveCart = ref(false)
 const haveCartClasse = computed(() => !!ordineClasse.value?.ordine?.length)
 const haveCartClasseConf = ref<true | false>(false)
+
+const showQRModal = ref(false)
 
 const allProducts = computed(() => productsStore.products)
 console.log('allProducts', allProducts.value)
@@ -165,7 +168,8 @@ getCart();
 
 <template>
     <div class="carrello">
-        <Alert v-if="showCheckoutAlert" :type="altertype" :message="checkoutAlertMessage" @confirm="confermaOrdineAlert" @cancel="cancelOdr" @close="closeAlert"/>
+        <Alert v-if="showCheckoutAlert" :type="altertype" :message="checkoutAlertMessage" @confirm="confermaOrdineAlert"
+            @cancel="cancelOdr" @close="closeAlert" />
 
         <div class="category-switch">
 
@@ -211,14 +215,14 @@ getCart();
                             <span class="product-info">
                                 x{{ item.quantity }}
                                 {{
-                                    item.title
+                                item.title
                                 }}
                             </span>
                             <div class="quantity-price">
-                                <QuantityControl :productId="item.id" :delete="false" :disabled="haveCart"/>
+                                <QuantityControl :productId="item.id" :delete="false" :disabled="haveCart" />
                                 <span class="item-total">
                                     €{{
-                                        (item.quantity * item.price).toFixed(2)
+                                    (item.quantity * item.price).toFixed(2)
                                     }}
                                 </span>
                             </div>
@@ -236,7 +240,7 @@ getCart();
                 </div>
                 <div class="summary-actions">
                     <button class="checkout-btn" @click="checkout" :disabled="haveCart">Procedi all'ordine</button>
-                    <button v-if="haveCart" class="checkout-btn" >Elimina oridine</button>
+                    <button v-if="haveCart" class="checkout-btn">Elimina oridine</button>
                     <button class="clear-btn" @click="clearCart">Svuota carrello</button>
                     <button class="continue-btn" @click="continueShopping">Continua lo shopping</button>
                 </div>
@@ -256,13 +260,15 @@ getCart();
 
                 <div class="summary-content classe">
                     <!-- Receipt items -->
-                    <div v-for="ordine in (ordineClasse?ordineClasse.ordine:[])" :key="ordine.idOrdine" class="receipt-items">
+                    <div v-for="ordine in (ordineClasse?ordineClasse.ordine:[])" :key="ordine.idOrdine"
+                        class="receipt-items">
                         <div class="receipt-person">
                             <div>
-                                <span class="giallo">{{ ordine.user.nome }}</span><span> : €{{ ordine.totale }}</span> 
+                                <span class="giallo">{{ ordine.user.nome }}</span><span> : €{{ ordine.totale }}</span>
                             </div>
                             <div class="switch-container">
-                                <button class="switch-btn" :class="{ active: isconf.find(o => o.id === ordine.idOrdine)?.isConf }"
+                                <button class="switch-btn"
+                                    :class="{ active: isconf.find(o => o.id === ordine.idOrdine)?.isConf }"
                                     @click="switchOrdineSingolo(ordine.idOrdine, true)">
                                     <svg class="icon" viewBox="0 0 24 24">
                                         <path
@@ -272,7 +278,8 @@ getCart();
                                     <span>Accetta</span>
                                 </button>
 
-                                <button class="switch-btn" :class="{ active: !isconf.find(o => o.id === ordine.idOrdine)?.isConf }"
+                                <button class="switch-btn"
+                                    :class="{ active: !isconf.find(o => o.id === ordine.idOrdine)?.isConf }"
                                     @click="switchOrdineSingolo(ordine.idOrdine, false)">
                                     <svg class="icon" viewBox="0 0 24 24">
                                         <path
@@ -284,18 +291,19 @@ getCart();
 
                         </div>
                         <div v-for="item in ordine.prodotti" :key="item.idProdotto" class="receipt-item">
-                            <img src="https://lh3.googleusercontent.com/a/ACg8ocLPv09a9-uNbEG-ZfRm5bWQUlyLOpBaKxHz88de_c6vB8RvQ_Plrg=s96-c" alt="Product Image" class="product-image" />
+                            <img src="https://lh3.googleusercontent.com/a/ACg8ocLPv09a9-uNbEG-ZfRm5bWQUlyLOpBaKxHz88de_c6vB8RvQ_Plrg=s96-c"
+                                alt="Product Image" class="product-image" />
                             <span class="product-info">
                                 x{{ item.quantita }}
                                 {{
-                                    item.nome
+                                item.nome
                                 }}
                             </span>
                             <div class="quantity-price">
                                 <!-- <QuantityControl :productId="item.id" :delete="false" /> -->
                                 <span class="item-total">
                                     €{{
-                                        (item.quantita * item.prezzo).toFixed(2)
+                                    (item.quantita * item.prezzo).toFixed(2)
                                     }}
                                 </span>
                             </div>
@@ -309,9 +317,12 @@ getCart();
                 </div>
 
                 <div class="summary-actions">
-                    <button class="checkout-btn" @click="checkout" :disabled="haveCartClasseConf">Conferma ordine</button>
-                    <button class="checkout-btn" @click="checkout">Vedi QR-code</button>
+                    <button class="checkout-btn" @click="checkout" :disabled="haveCartClasseConf">Conferma
+                        ordine</button>
+                    <button class="checkout-btn" @click="showQRModal = true" :disabled="!haveCartClasseConf">Vedi
+                        QR-code</button>
                 </div>
+                <QRModal :show="showQRModal" :orders="ordineClasse?.ordine || []" @close="showQRModal = false" />
             </div>
         </div>
 
