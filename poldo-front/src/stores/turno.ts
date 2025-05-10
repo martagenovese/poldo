@@ -29,7 +29,8 @@ export const useTurnoStore = defineStore('turno', () => {
     try {
 
       const giornoSettimana = new Date().toLocaleDateString('it-IT', { weekday: 'long' }).toLowerCase().substring(0, 3)
-      const response = await fetch(`http://figliolo.it:5005/v1/turni?giorno=${giornoSettimana}`, { headers })
+      const response = await fetch(`http://figliolo.it:5005/v1/turni?giorno=${giornoSettimana}`, { headers });
+      if (response.status === 404) throw new Error('Turni non trovati per oggi')
       if (!response.ok) throw new Error('Errore nella risposta della rete')
 
       const data = await response.json()
@@ -46,7 +47,6 @@ export const useTurnoStore = defineStore('turno', () => {
         fineRitiro: item.oraFineRitiro,
         nome: item.nome,
       }))
-      console.log('Turni:', turni.value)
     } catch (err) {
       error.value = (err as Error).message
     } finally {
@@ -56,14 +56,12 @@ export const useTurnoStore = defineStore('turno', () => {
 
   const selectTurno = (n: number) => {
     const turno = turni.value.find(t => t.n === n)
-    console.log('Turno selezionato:', turno)
     if (!turno) {
         console.error('Turno non trovato')
         error.value = 'Turno non trovato'
         return
     }
     selectedTurno.value = n
-    console.log('Turno selezionato2:', selectedTurno.value)
   }
 
   return {

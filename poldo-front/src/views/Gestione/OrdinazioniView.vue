@@ -136,8 +136,6 @@ const fetchProfOrders = async () => {
     }
     
     profOrders.value = processedOrders;
-    
-    console.log("Ordini dei professori elaborati:", profOrders.value.length);
   } catch (err) {
     console.error('Errore nel recupero degli ordini dei professori:', err)
     error.value = 'Errore nel caricamento degli ordini dei professori.'
@@ -165,8 +163,6 @@ const fetchClassOrders = async () => {
         classe: order.classe || 'Sconosciuta',
         confermato: order.confermato === undefined ? true : order.confermato
       }))
-    
-    console.log("Ordini per classe elaborati:", classOrders.value.length)
   } catch (err) {
     console.error('Errore nel recupero degli ordini per classe:', err)
     error.value = 'Errore nel caricamento degli ordini per classe.'
@@ -237,7 +233,6 @@ onMounted(async () => {
   }
   
   turnoStore.selectTurno(selectedTurno.value)
-  console.log("Turno selezionato:", selectedTurno.value)
   
   if (selectedTurno.value === 2) {
     classOrders.value = profOrders.value.map(order => ({
@@ -360,7 +355,7 @@ h1 {
   flex: 1;
   display: flex;
   flex-direction: column;
-  height: calc(80vh - 250px); 
+  height: calc(80vh - 200px); 
   overflow: hidden;
 }
 

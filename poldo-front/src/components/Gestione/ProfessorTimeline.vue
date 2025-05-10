@@ -1,7 +1,11 @@
 <template>
-  <div class="timeline-section">
+  <div 
+    class="timeline-section" 
+    :class="{ 'detail-view': isDetailView }"
+    @click="!isDetailView && handleTimelineClick()"
+  >
     <!-- Removed button from header and added as absolute positioned element -->
-    <button @click="$emit('reload')" class="reload-btn">
+    <button @click.stop="$emit('reload')" class="reload-btn">
       <svg class="reload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M23 4v6h-6"></path>
         <path d="M1 20v-6h6"></path>
@@ -90,6 +94,10 @@ const props = defineProps({
       pickupStart: '11:00',
       pickupEnd: '13:00'
     })
+  },
+  isDetailView: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -195,11 +203,21 @@ onUnmounted(() => {
 
 // Import the calculateTimePosition from utility
 import { calculateTimePosition } from '@/utils/timelineUtils'
+import { useRouter } from 'vue-router'
+
+// Router for navigation
+const router = useRouter()
+
+// Handle click on timeline to navigate to the specialized view
+const handleTimelineClick = () => {
+  router.push('/gestione/ordinazioni-prof')
+}
 </script>
 
 <style scoped>
 .timeline-section {
   height: 20vh; 
+  max-height: 300px;
   min-height: 200px;
   margin-bottom: 20px;
   border: 1px solid var(--color-border);
@@ -210,6 +228,13 @@ import { calculateTimePosition } from '@/utils/timelineUtils'
   display: flex;
   flex-direction: column;
   position: relative; /* Added to position the reload button */
+  cursor: pointer; /* Shows that it's clickable */
+  transition: transform 0.2s, box-shadow 0.2s; /* Smooth transition for hover effect */
+}
+
+.timeline-section:hover {
+  transform: scale(1.02); /* Grows slightly bigger */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .timeline-section h2 {
@@ -229,10 +254,10 @@ import { calculateTimePosition } from '@/utils/timelineUtils'
   flex: 1;
   overflow-x: auto;
   overflow-y: hidden;
-  background-color: var(--poldo-background-soft);
+  background-color: var(--card-bg);
   border-radius: 4px;
   scrollbar-width: thin;
-  scrollbar-color: var(--poldo-primary) var(--poldo-background-soft);
+  scrollbar-color: var(--poldo-primary) var(--card-bg);;
 }
 
 .timeline-container::-webkit-scrollbar {
@@ -328,5 +353,17 @@ import { calculateTimePosition } from '@/utils/timelineUtils'
   .timeline-section {
     min-height: 180px;
   }
+}
+
+/* Styles for detail view mode */
+.timeline-section.detail-view {
+  cursor: default;
+  transition: none;
+  background-color: var(--card-bg);
+}
+
+.timeline-section.detail-view:hover {
+  transform: none;
+  box-shadow: 0 2px 8px var(--card-shadow);
 }
 </style>

@@ -6,6 +6,7 @@ import { useTurnoStore } from '../stores/turno'
 import NewProdottiView from '../views/Gestione/NewProdottiView.vue'
 import ModificaView from '../views/Gestione/ProdottiView.vue'
 import OrdinazioniView from '@/views/Gestione/OrdinazioniView.vue'
+import OrdinazioniProf from '@/views/Gestione/OrdinazioniProf.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -41,6 +42,11 @@ const router = createRouter({
       path: '/gestione/ordinazioni',
       name: 'ordinazioni',
       component: OrdinazioniView,
+    },
+    {
+      path: '/gestione/ordinazioni-prof',
+      name: 'ordinazioniProf',
+      component: OrdinazioniProf,
     }
   ],
 })

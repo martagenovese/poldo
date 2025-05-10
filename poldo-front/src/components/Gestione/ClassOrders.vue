@@ -152,7 +152,6 @@ h3 {
 
 .class-card {
   width: calc(50% - 15px);
-  margin-bottom: 15px;
 }
 
 .class-products {

@@ -87,8 +87,9 @@ const getTotalQuantity = (productId: number): number => {
 
 <style scoped>
 .product-totals {
-  width: 100%;
-  padding-right: 20px;
+  width: 30vw;
+  max-width: 300px;
+  padding: 20px;
   overflow-y: auto;
   height: 100%;
 }

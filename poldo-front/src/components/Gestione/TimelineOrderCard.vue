@@ -3,6 +3,8 @@
     class="timeline-order"
     :style="{ left: `${order.position}%` }"
   >
+    <!-- Add time marker that shows exactly where the time point is -->
+    <div class="time-marker"></div>
     <div class="order-detail-card">
       <div class="order-header">
         <div class="order-info">
@@ -86,21 +88,32 @@ const getUserDisplayName = (order: Order): string => {
 .timeline-order {
   position: absolute;
   top: 30px;
-  transform: translateX(-50%);
+  /* Remove the transform that was centering the card */
   max-width: 250px;
   padding: 0;
   z-index: 5;
 }
 
+/* Time marker - vertical line indicating exact position */
+.time-marker {
+  position: absolute;
+  top: -30px; 
+  left: 0;
+  width: 2px;
+  height: 30px; /* Height of the marker line */
+  background-color: var(--poldo-primary);
+  z-index: 6;
+}
+
 .order-detail-card {
   padding: 10px;
-  background-color: var(--card-bg);
-  border-radius: 8px;
+  background-color: var(--poldo-background-soft);
+  border-radius: 0 8px 8px 0;
   box-shadow: 0 2px 4px var(--card-shadow);
   white-space: normal;
   width: 220px;
   max-height: calc(100% - 45px);
-  overflow-y: auto;
+  overflow: auto;
   font-size: 0.85rem;
   border-left: 3px solid var(--poldo-primary);
 }
@@ -122,7 +135,6 @@ const getUserDisplayName = (order: Order): string => {
 
 .order-detail-card .order-time {
   font-size: 0.9rem;
-  background-color: var(--poldo-background-soft);
   padding: 2px 4px;
   border-radius: 4px;
 }
@@ -133,7 +145,6 @@ const getUserDisplayName = (order: Order): string => {
   overflow-y: auto;
   border-radius: 4px;
   padding: 2px;
-  background-color: var(--poldo-background-soft);
 }
 
 .order-detail-card .order-product {
@@ -164,7 +175,6 @@ const getUserDisplayName = (order: Order): string => {
 .order-detail-card .order-total {
   color: var(--poldo-primary);
   text-align: right;
-  background-color: var(--poldo-background-soft);
   padding: 4px 8px;
   border-radius: 4px;
 }

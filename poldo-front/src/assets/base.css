@@ -1,12 +1,12 @@
 :root {
   --poldo-primary: #FFB347;
   --poldo-background: #FFF8F0;
-  --poldo-background-soft: #FFEFD5;
+  --poldo-background-soft: #fff4d5;
   --poldo-accent: #FFA726;
   --poldo-text: #2A2200;
-  --poldo-card-bg: #FFEEDD;
+  --poldo-card-bg: #fceec2;
   --poldo-card-shadow: rgba(42, 34, 0, 0.1);
-  --poldo-menu-bg: #FFEFD5;
+  --poldo-menu-bg: #fff4d5;
   --poldo-green: #689F38;
   --poldo-red: #D32F2F;
 

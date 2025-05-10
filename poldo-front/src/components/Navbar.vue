@@ -18,13 +18,16 @@ const pageTitles = {
     home: 'Home',
     prodotti: 'Prodotti',
     carrello: 'Carrello',
-    ordinazioni: 'Ordinazioni'
+    ordinazioni: 'Ordinazioni',
+    ordinazioniProf: 'Ordinazioni Professori',
 } as const
 
 const navRoutes = [
     { name: 'Home', path: '/', requiresTurno: false },
     { name: 'Prodotti', path: '/prodotti', requiresTurno: true },
-    { name: 'Carrello', path: '/carrello', requiresTurno: true }
+    { name: 'Carrello', path: '/carrello', requiresTurno: true },
+    { name: 'Ordinazioni', path: '/gestione/ordinazioni', requiresTurno: false },
+    { name: 'Ordinazioni Professori', path: '/gestione/ordinazioni/prof', requiresTurno: false }
 ] as const
 
 const toggleMenu = () => showMenu.value = !showMenu.value
