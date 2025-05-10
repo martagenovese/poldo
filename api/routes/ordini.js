@@ -857,14 +857,19 @@ router.get('/prodotti',
         const connection = await pool.getConnection();
         try {
             const { startDate, endDate, nTurno } = req.query;
-            
-            let query = `
+              let query = `
                 SELECT 
                     p.idProdotto,
                     p.nome,
                     p.prezzo,
                     p.descrizione,
-                    SUM(dos.quantita) as quantitaOrdinata
+                    SUM(dos.quantita) as quantitaOrdinata,
+                    CASE 
+                        WHEN SUM(dos.quantita) = SUM(CASE WHEN dos.preparato = TRUE THEN dos.quantita ELSE 0 END) 
+                        THEN TRUE 
+                        ELSE FALSE 
+                    END as tuttiPreparati,
+                    SUM(CASE WHEN dos.preparato = TRUE THEN dos.quantita ELSE 0 END) as quantitaPreparata
                 FROM Prodotto p
                 LEFT JOIN DettagliOrdineSingolo dos ON p.idProdotto = dos.idProdotto
                 LEFT JOIN OrdineSingolo os ON dos.idOrdineSingolo = os.idOrdine
@@ -888,21 +893,76 @@ router.get('/prodotti',
             query += ` GROUP BY p.idProdotto
                        ORDER BY quantitaOrdinata DESC, p.nome ASC`;
 
-            const [products] = await connection.execute(query, params);
-
-            const formattedProducts = products.map(product => ({
+            const [products] = await connection.execute(query, params);            const formattedProducts = products.map(product => ({
                 idProdotto: product.idProdotto,
                 nome: product.nome,
                 prezzo: product.prezzo,
                 descrizione: product.descrizione,
                 img: product.img,
-                quantitaOrdinata: product.quantitaOrdinata || 0, 
+                quantitaOrdinata: product.quantitaOrdinata || 0,
+                tuttiPreparati: product.tuttiPreparati || false,
+                quantitaPreparata: product.quantitaPreparata || 0
             }));
 
             res.json(formattedProducts);
 
         } catch (error) {
             console.error('Errore nel recupero prodotti e quantità:', error);
+            res.status(500).json({ error: 'Errore del database' });
+        } finally {
+            connection.release();
+        }
+    }
+);
+
+// Marca un prodotto come preparato
+router.put('/prodotti/:id/prepara',
+    authenticateJWT,
+    authorizeRole(['admin', 'gestore']),
+    async (req, res) => {
+        const connection = await pool.getConnection();
+        try {
+            const { id } = req.params;
+            const { nTurno, startDate, endDate } = req.query;
+            
+            if (!id) {
+                return res.status(400).json({ error: 'ID prodotto non valido' });
+            }
+
+            if (!nTurno) {
+                return res.status(400).json({ error: 'Parametro nTurno obbligatorio' });
+            }
+
+            // Costruisci la query con i parametri obbligatori e opzionali
+            let query = `
+                UPDATE DettagliOrdineSingolo dos
+                JOIN OrdineSingolo os ON dos.idOrdineSingolo = os.idOrdine
+                SET dos.preparato = TRUE 
+                WHERE dos.idProdotto = ?
+                AND dos.preparato = FALSE
+                AND os.nTurno = ?`;
+            
+            const params = [id, nTurno];
+
+            // Aggiungi filtri per date se specificate
+            if (startDate && endDate) {
+                query += ` AND os.data BETWEEN ? AND ?`;
+                params.push(startDate, endDate);
+            } else {
+                query += ` AND os.data = CURDATE()`;
+            }
+
+            // Esegui l'aggiornamento
+            const [result] = await connection.execute(query, params);
+
+            res.json({ 
+                success: true, 
+                message: 'Prodotto marcato come preparato',
+                updatedCount: result.affectedRows 
+            });
+
+        } catch (error) {
+            console.error('Errore nel marcare prodotti come preparati:', error);
             res.status(500).json({ error: 'Errore del database' });
         } finally {
             connection.release();
