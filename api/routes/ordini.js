@@ -128,6 +128,7 @@ router.get('/classi',
                 SELECT
                     c.nome AS classe,
                     oc.data,
+                    oc.oraRitiro,
                     JSON_ARRAYAGG(
                         JSON_OBJECT(
                             'idProdotto', p.idProdotto,
