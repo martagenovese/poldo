@@ -22,9 +22,7 @@ const formatDate = (date) => {
 };
 
 // Ottieni tutti gli ordini individuali
-router.get('/',
-    authenticateJWT,
-    authorizeRole(['admin']),
+router.get('/', authenticateJWT, authorizeRole(['admin']),
     async (req, res) => {
         const connection = await pool.getConnection();
         try {
@@ -41,7 +39,6 @@ router.get('/',
                     oc.confermato,
                     oc.preparato,
                     oc.oraRitiro,
-                    oc.studente,
                     JSON_ARRAYAGG(
                         JSON_OBJECT(
                             'idProdotto', p.idProdotto,
@@ -84,11 +81,6 @@ router.get('/',
             if (preparato === '0' || preparato === '1') {
                 query += ` AND oc.preparato = ?`;
                 params.push(Number(preparato));
-            }
-
-            if (studente === '0' || studente === '1') {
-                query += ' AND oc.studente = ?';
-                params.push(Number(studente));
             }
           
             query += ` GROUP BY os.idOrdine ORDER BY os.data DESC, os.idOrdine DESC`;
