@@ -33,12 +33,12 @@ const pageTitle = computed(() =>
 )
 
 const hasSelectedTurno = computed(() =>
-    !!turnoStore.turnoSelezionato
+    turnoStore.turnoSelezionato !== -1
 )
 
 const nomeTurno = computed(() => {
     const turno = turnoStore.turni.find(turno => turno.n === turnoStore.turnoSelezionato)
-    return turno ? turno.nome : 'Turno non selezionato'
+    return turno !== undefined ? turno.nome : 'Turno non selezionato'
 })
 
 const navigate = (path: string, requiresTurno: boolean) => {
