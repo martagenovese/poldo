@@ -33,7 +33,7 @@ export const useCartClasseStore = defineStore('cartClasse', () => {
   const turnoStore = useTurnoStore()
   const currentTurno = computed(() => turnoStore.turnoSelezionato)
 
-  async function getOrdine(): Promise<OrdineClasse | false> {
+  async function getOrdine(): Promise<{status: true, ordine: OrdineClasse} | {status: false, ordine: null}> {
     const headers = {
       'Content-Type': 'application/json',
       Authorization:
@@ -46,7 +46,9 @@ export const useCartClasseStore = defineStore('cartClasse', () => {
         { method: 'GET', headers },
       )
 
-      if (!response.ok) throw new Error('Network response was not ok')
+      if (!response.ok) {
+        return {status: false, ordine: null}
+      }
 
       const rawData = await response.json()
       console.log('rawData', rawData)
@@ -75,11 +77,12 @@ export const useCartClasseStore = defineStore('cartClasse', () => {
           }),
         ),
       }
+
       console.log('parsed', parsed)
-      return parsed
+      return {status: true, ordine: parsed}
     } catch (error) {
       console.error('Error fetching cart:', error)
-      return false
+      return {status: false, ordine: null}
     }
   }
 

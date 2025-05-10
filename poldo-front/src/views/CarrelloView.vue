@@ -5,7 +5,7 @@ import Alert from '@/components/Alert.vue'
 import QuantityControl from '@/components/ControlloQuantitaProdotto.vue'
 import type { OrdineClasse } from '@/stores/cartClasse'
 
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useCartClasseStore } from '@/stores/cartClasse'
@@ -15,8 +15,12 @@ const productsStore = useProductsStore()
 const router = useRouter()
 const cartClasseStore = useCartClasseStore()
 
+const ordineClasse = ref<OrdineClasse | null>(null)
+const isconf = ref<{id: number, isConf: boolean}[]>([])
+
 const haveCart = ref(false)
-const haveCartClasse = ref(false)
+const haveCartClasse = computed(() => !!ordineClasse.value?.ordine?.length)
+const haveCartClasseConf = ref<true | false>(false)
 
 const allProducts = computed(() => productsStore.products)
 console.log('allProducts', allProducts.value)
@@ -81,18 +85,19 @@ const clearCart = () => {
     cartStore.clearCart()
 }
 
-const confOdr = async () => {
+const confermaOrdineAlert = async () => {
     showCheckoutAlert.value = false
     if (selectedMacro.value === 'classe') {
         console.log('confirmOdrClasse')
         const risp = await cartClasseStore.confOrdClasse()
+        fetchOrdineClasse()
         altertype.value = risp ? 'success' : 'error'
         checkoutAlertMessage.value = risp ? 'Ordine di classe confermato!' : 'Errore durante la conferma dell\'ordine di classe'
         showCheckoutAlert.value = true
     } else {
         console.log('confirmOdrPersonale')
         const risp = await cartStore.confirmCart()
-
+        fetchOrdineClasse()
         altertype.value = risp.ok ? 'success' : 'error'
         checkoutAlertMessage.value = risp.message
         showCheckoutAlert.value = true
@@ -115,39 +120,42 @@ const selectedMacro = ref<'personale' | 'classe'>('personale')
 
 
 
-const ordineClasse = ref<OrdineClasse | null>(null)
-const loadingClasse = ref(false)
-const isconf = ref<{id: number, isConf: boolean}[]>([])
+
+
+watch(ordineClasse, (newVal) => {
+    console.log('watch ordineClasse', newVal)
+    if(newVal) {
+        haveCartClasseConf.value = newVal.confermato
+        isconf.value = newVal.ordine.map(o => ({
+        id: o.idOrdine,
+        isConf: o.confermato
+        }))
+    }else{
+        haveCartClasseConf.value =  false
+    }
+    
+}, { deep: true })
+
+
+async function fetchOrdineClasse() {
+  try {
+    const result = await cartClasseStore.getOrdine()
+    ordineClasse.value = result.status ? result.ordine : null
+  } catch (error) {
+    console.error("Errore nel fetch ordine classe:", error)
+    ordineClasse.value = null
+  }
+}
 
 onMounted(async () => {
-    loadingClasse.value = true
-    try {
-        const result = await cartClasseStore.getOrdine()
-        ordineClasse.value = result !== false ? result : null
-        haveCartClasse.value = ordineClasse.value?.confermato === true
-        console.log('haveordineClasse', haveCartClasse.value)
-        isconf.value = ordineClasse.value?.ordine.map(o => ({
-            id: o.idOrdine,
-            isConf: o.confermato
-        })) || [];
-    } finally {
-        loadingClasse.value = false
-    }
+    fetchOrdineClasse();
 })
 
 
 
-
-async function confirmOrd(id: number, status: boolean) {
+async function switchOrdineSingolo(id: number, status: boolean) {
     const res = await cartClasseStore.confOrd(id, status)
-    if(res === true) {
-        const index = isconf.value.findIndex(o => o.id === id)
-        isconf.value[index].isConf = status
-        console.log('confirmOrd', id, status);
-    } else {
-        console.log('confirmOrd error')
-    }
-    
+    if(res) await fetchOrdineClasse()
 }
 
 
@@ -157,7 +165,7 @@ getCart();
 
 <template>
     <div class="carrello">
-        <Alert v-if="showCheckoutAlert" :type="altertype" :message="checkoutAlertMessage" @confirm="confOdr" @cancel="cancelOdr" @close="closeAlert"/>
+        <Alert v-if="showCheckoutAlert" :type="altertype" :message="checkoutAlertMessage" @confirm="confermaOrdineAlert" @cancel="cancelOdr" @close="closeAlert"/>
 
         <div class="category-switch">
 
@@ -191,7 +199,8 @@ getCart();
 
             <div v-else class="cart-summary">
                 <div class="summary-header">
-                    <h2>Riepilogo ordine personale</h2>
+                    <h2 v-if="!haveCart">Riepilogo ordine personale</h2>
+                    <h2 v-else>Riepilogo ordine effettuato</h2>
                 </div>
 
                 <div class="summary-content">
@@ -235,7 +244,7 @@ getCart();
         </div>
 
         <div v-if="selectedMacro === 'classe'" class="cart-content">
-            <div v-if="!hasItems" class="empty-cart">
+            <div v-if="!haveCartClasse" class="empty-cart">
                 <p>Il carrello della tua classe è vuoto</p>
             </div>
 
@@ -254,7 +263,7 @@ getCart();
                             </div>
                             <div class="switch-container">
                                 <button class="switch-btn" :class="{ active: isconf.find(o => o.id === ordine.idOrdine)?.isConf }"
-                                    @click="confirmOrd(ordine.idOrdine, true)">
+                                    @click="switchOrdineSingolo(ordine.idOrdine, true)">
                                     <svg class="icon" viewBox="0 0 24 24">
                                         <path
                                             d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
@@ -264,7 +273,7 @@ getCart();
                                 </button>
 
                                 <button class="switch-btn" :class="{ active: !isconf.find(o => o.id === ordine.idOrdine)?.isConf }"
-                                    @click="confirmOrd(ordine.idOrdine, false)">
+                                    @click="switchOrdineSingolo(ordine.idOrdine, false)">
                                     <svg class="icon" viewBox="0 0 24 24">
                                         <path
                                             d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z" />
@@ -300,7 +309,7 @@ getCart();
                 </div>
 
                 <div class="summary-actions">
-                    <button class="checkout-btn" @click="checkout" :disabled="haveCartClasse">Conferma ordine</button>
+                    <button class="checkout-btn" @click="checkout" :disabled="haveCartClasseConf">Conferma ordine</button>
                     <button class="checkout-btn" @click="checkout">Vedi QR-code</button>
                 </div>
             </div>
