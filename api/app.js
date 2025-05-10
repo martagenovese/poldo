@@ -11,6 +11,7 @@ const orderRoutes = require('./routes/ordini');
 const ingredientsRoutes = require('./routes/ingredienti');
 const tagRoutes = require('./routes/tag');
 const turniRoutes = require('./routes/turni');
+const qrRoutes = require('./routes/qr');
 //const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
@@ -34,6 +35,7 @@ app.use('/v1/ordini', orderRoutes);
 app.use('/v1/ingredienti', ingredientsRoutes);
 app.use('/v1/tag', tagRoutes);
 app.use('/v1/turni', turniRoutes);
+app.use('/v1/qr', qrRoutes);
 //app.use(reportRoutes);
 
 // Error handling
