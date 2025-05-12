@@ -161,7 +161,7 @@ router.get('/classi',
                     SELECT os.idOrdineClasse, dos.idProdotto, SUM(dos.quantita) AS totalQuantita
                     FROM OrdineSingolo os
                     JOIN DettagliOrdineSingolo dos ON os.idOrdine = dos.idOrdineSingolo
-                    GROUP BY os.idOrdineClasse, dos.idProdotto
+                    GROUP BY os.idOrdineClasse, dos.idProdotto, oc.preparato
                 ) dos ON oc.idOrdine = dos.idOrdineClasse
                 JOIN Prodotto p ON dos.idProdotto = p.idProdotto
                 WHERE 1=1
