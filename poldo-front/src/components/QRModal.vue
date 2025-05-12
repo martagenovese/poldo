@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import VueQrcode from 'vue-qrcode'
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import type { OrdineClasse } from '@/stores/cartClasse'
 import { useQRStore } from '@/stores/qr'
 import type { QR } from '@/stores/qr'
 
@@ -63,16 +62,18 @@ const handleKeydown = (e: KeyboardEvent) => {
     }
 }
 
-onMounted(async () => {
+watch(() => props.show, async (newVal) => {
+  if (newVal) {
     await qrStore.getQR().then(response => {
-        if (response.status) {
-            qrList.value = response.qr;
-        } else {
-            qrList.value = [];
-        }
-        console.log('QR List:', qrList.value)
-    });
-    window.addEventListener('keydown', handleKeydown)
+      if (response.status) {
+        qrList.value = response.qr
+        currentIndex.value = 0
+      } else {
+        qrList.value = []
+      }
+      console.log('QR List:', qrList.value)
+    })
+  }
 })
 
 onBeforeUnmount(() => {

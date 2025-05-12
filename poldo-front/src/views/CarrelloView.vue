@@ -575,6 +575,7 @@ h2 {
 }
 
 .classe .receipt-items{
+    height: auto;
     border-radius: 15px;
     overflow-y: visible;
     padding: 10px;
