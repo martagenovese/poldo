@@ -190,7 +190,7 @@ router.get('/classi',
             if (preparato === '0' || preparato === '1') {
                 query += ` AND oc.preparato = ?`;
                 params.push(Number(preparato));
-            }            query += ` GROUP BY c.nome, oc.data, oc.oraRitiro ORDER BY oc.classe ASC, oc.preparato`;
+            }            query += ` GROUP BY c.nome, oc.data, oc.oraRitiro, oc.preparato ORDER BY oc.classe ASC`;
 
             const [results] = await connection.execute(query, params);
 
