@@ -146,6 +146,7 @@ router.get('/classi',
                     c.nome AS classe,
                     oc.data,
                     oc.oraRitiro,
+                    oc.preparato,
                     JSON_ARRAYAGG(
                         JSON_OBJECT(
                             'idProdotto', p.idProdotto,
