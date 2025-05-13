@@ -198,7 +198,8 @@ router.get('/classi',
                 classe: row.classe,
                 data: formatDate(row.data),
                 oraRitiro: row.oraRitiro,
-                prodotti: row.prodotti
+                prodotti: row.prodotti,
+                preparato: row.preparato
             }));
 
             res.json(formatted);
