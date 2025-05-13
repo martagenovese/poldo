@@ -144,6 +144,7 @@ router.get('/classi',
             let query = `
                 SELECT
                     c.nome AS classe,
+                    oc.classe AS classeId,
                     oc.data,
                     oc.oraRitiro,
                     oc.preparato,
@@ -190,12 +191,13 @@ router.get('/classi',
             if (preparato === '0' || preparato === '1') {
                 query += ` AND oc.preparato = ?`;
                 params.push(Number(preparato));
-            }            query += ` GROUP BY c.nome, oc.data, oc.oraRitiro, oc.preparato ORDER BY oc.classe ASC`;
+            }            query += ` GROUP BY c.nome, oc.classe, oc.data, oc.oraRitiro, oc.preparato ORDER BY oc.classe ASC`;
 
             const [results] = await connection.execute(query, params);
 
             const formatted = results.map(row => ({
                 classe: row.classe,
+                classeId: row.classeId,
                 data: formatDate(row.data),
                 oraRitiro: row.oraRitiro,
                 prodotti: row.prodotti,
