@@ -1,201 +1,184 @@
 <script setup lang="ts">
-import { ref, computed, watchEffect } from 'vue'
-import { useProductsStore } from '@/stores/products'
-import { useFiltersStore } from '@/stores/filters'
-import { usePendingChangesStore } from '@/stores/pendingChanges'
+import { ref, computed, watch, watchEffect } from 'vue'
+import { useGestioneProductsStore } from '@/stores/Gestione/products'
+import type { Product } from '@/stores/products'
+import { useFiltersStore } from '@/stores/Gestione/filters'
+import { usePendingChangesStore } from '@/stores/Gestione/pendingChanges'
+import type { ProductChange } from '@/stores/Gestione/pendingChanges'
 import IconEdit from '@/components/icons/IconEdit.vue'
 
-// Definizione delle proprietà del componente
 const props = defineProps<{
-  imageSrc: string
-  imageAlt?: string
-  title: string
-  description?: string
-  ingredients?: string[]
-  tags?: string[]
-  productId?: number
-  price?: number
+  productId: number
   editable?: boolean
-  isActive?: boolean
 }>()
 
-const productsStore = useProductsStore()
+const productsStore = useGestioneProductsStore()
 const filtersStore = useFiltersStore()
 const pendingChangesStore = usePendingChangesStore()
 
-// Inizializzazione delle variabili locali
-const id = ref(props.productId || Math.floor(Math.random() * 10000))
+// Recupera il prodotto dallo store
+const product = computed(() => productsStore.getProductById(props.productId))
+if (!product.value?.id) throw new Error(`Prodotto con ID ${props.productId} non trovato!`)
+
+// Stato locale inizializzato dai valori del prodotto
 const showEditModal = ref(false)
-const localTitle = ref(props.title)
-const localPrice = ref(props.price || 0)
-const localDescription = ref(props.description || '')
-const localIngredients = ref([...props.ingredients || []])
-const localTags = ref([...props.tags || []])
-const localIsActive = ref(props.isActive || true)
+const localTitle = ref(product.value?.title || '')
+const localPrice = ref(product.value?.price || 0)
+const localDescription = ref(product.value?.description || '')
+const localIngredients = ref([...(product.value?.ingredients || [])])
+const localTags = ref([...(product.value?.tags || [])])
+const localIsActive = ref(product.value?.isActive ?? true)
+const localImageSrc = ref(product.value?.imageSrc || '')
 
-// Computed property per verificare se ci sono modifiche in sospeso
-const hasPendingChanges = computed(() =>
-  pendingChangesStore.hasProductChange(id.value)
-)
-
-// Funzione per aprire il modal di modifica
-const openEditModal = () => {
-  const pendingData = pendingChangesStore.productChanges[id.value]
-  if (pendingData) {
-    localTitle.value = pendingData.title
-    localPrice.value = pendingData.price
-    localDescription.value = pendingData.description
-    localIngredients.value = pendingData.ingredients
-    localTags.value = pendingData.tags
-    localIsActive.value = pendingData.isActive
-  } else {
-    localTitle.value = props.title
-    localPrice.value = props.price || 0
-    localDescription.value = props.description || ''
-    localIngredients.value = [...props.ingredients || []]
-    localTags.value = [...props.tags || []]
-    localIsActive.value = props.isActive || true
-
-    originalData.value = {
-      title: props.title,
-      price: props.price || 0,
-      description: props.description || '',
-      ingredients: [...props.ingredients || []],
-      tags: [...props.tags || []],
-      isActive: props.isActive || true
-    }
-  }
-  showEditModal.value = true
-}
-
-// Dati originali per il confronto
-const originalData = ref({
-  title: props.title,
-  price: props.price || 0,
-  description: props.description || '',
-  ingredients: [...props.ingredients || []],
-  tags: [...props.tags || []],
-  isActive: props.isActive || true
+const originalData = ref<Product>({
+  id: product.value?.id || 0,
+  title: product.value?.title || '',
+  description: product.value?.description || '',
+  ingredients: product.value?.ingredients || [],
+  price: product.value?.price || 0,
+  tags: product.value?.tags || [],
+  isActive: product.value?.isActive || false,
+  imageSrc: product.value?.imageSrc || ''
 })
 
-// Funzione per verificare se un campo è stato modificato
-const isFieldModified = (field: keyof typeof originalData.value): boolean => {
-  const currentMap = {
-    title: localTitle.value,
-    price: localPrice.value,
-    description: localDescription.value,
-    ingredients: localIngredients.value,
-    tags: localTags.value,
-    isActive: localIsActive.value
+// Watch per aggiornamenti esterni al prodotto
+watch(product, (newVal) => {
+  if (newVal) {
+    localTitle.value = newVal.title
+    localPrice.value = newVal.price
+    localDescription.value = newVal.description
+    localIngredients.value = [...newVal.ingredients]
+    localTags.value = [...newVal.tags]
+    localIsActive.value = newVal.isActive
+    localImageSrc.value = newVal.imageSrc
+    originalData.value = { ...newVal }
   }
-  const curr = currentMap[field]
-  const orig = originalData.value[field]
+}, { immediate: true })
 
-  if (Array.isArray(orig)) {
-    return JSON.stringify(curr) !== JSON.stringify(orig)
-  }
-  return curr !== orig
-}
+const hasPendingChanges = computed(() => pendingChangesStore.hasProductChange(props.productId))
 
-const isImgModified = computed(() => !!imageFile.value)
-
-const resetImage = () => {
-  imageFile.value = null
-  localImageSrc.value = props.imageSrc
-  checkForChanges()
-}
-
+// Immagine
 const isHoveringImg = ref(false)
 const imageFile = ref<File | null>(null)
-const localImageSrc = ref(props.imageSrc)
 const fileInput = ref<HTMLInputElement | null>(null)
+const isImgModified = computed(() => !!imageFile.value)
 
-// Funzione per controllare le modifiche
-const checkForChanges = () => {
-  const currentData = {
-    title: localTitle.value,
-    price: localPrice.value,
-    description: localDescription.value,
-    ingredients: localIngredients.value,
-    tags: localTags.value,
-    isActive: localIsActive.value,
-    imageFile: imageFile.value
-  }
-
-  const hasChanges = JSON.stringify(currentData) !== JSON.stringify({
-    ...originalData.value,
-    imageFile: null
-  }) || imageFile.value !== null
-
-  if (hasChanges) {
-    pendingChangesStore.addProductChange(id.value, currentData)
-  } else {
-    pendingChangesStore.removeProductChange(id.value)
-  }
+// Funzioni immagine
+const resetImage = () => {
+  imageFile.value = null
+  localImageSrc.value = product.value.imageSrc
+  checkForChanges()
 }
 
 const handleImageUpload = async (event: Event) => {
   const input = event.target as HTMLInputElement
-  if (input.files && input.files[0]) {
+  if (input.files?.[0]) {
     imageFile.value = input.files[0]
     localImageSrc.value = URL.createObjectURL(imageFile.value)
     checkForChanges()
   }
 }
 
-// Effetto di watch per controllare le modifiche quando il modal è aperto
-watchEffect(() => {
-  if (showEditModal.value) {
-    checkForChanges()
-  }
-})
+// Gestione modifiche
+const checkForChanges = () => {
+  const changes: Partial<ProductChange> = { id: props.productId }
 
-// Funzione per salvare le modifiche come in sospeso
-const saveAsPending = () => {
-  const currentData = {
+  // Controllo modifiche per ogni campo
+  const fields: (keyof Omit<ProductChange, 'id'>)[] = [
+    'title', 'price', 'description',
+    'ingredients', 'tags', 'isActive', 'imageSrc'
+  ]
+
+  fields.forEach(field => {
+    const currentValue = {
+      title: localTitle.value,
+      price: localPrice.value,
+      description: localDescription.value,
+      ingredients: localIngredients.value,
+      tags: localTags.value,
+      isActive: localIsActive.value,
+      imageSrc: localImageSrc.value
+    }[field]
+
+    const originalValue = originalData.value[field]
+
+    if (JSON.stringify(currentValue) !== JSON.stringify(originalValue)) {
+      changes[field] = currentValue
+    }
+  })
+
+  if (Object.keys(changes).length > 1) {
+    pendingChangesStore.addProductChange(changes as ProductChange)
+  } else {
+    pendingChangesStore.removeProductChange(props.productId)
+  }
+}
+
+// Modal edit
+const openEditModal = () => {
+  const pendingData = pendingChangesStore.productChanges[props.productId];
+
+  if (pendingData) {
+    if (pendingData.title !== undefined) localTitle.value = pendingData.title;
+    if (pendingData.price !== undefined) localPrice.value = pendingData.price;
+    if (pendingData.description !== undefined) localDescription.value = pendingData.description;
+    if (pendingData.ingredients !== undefined) localIngredients.value = pendingData.ingredients;
+    if (pendingData.tags !== undefined) localTags.value = pendingData.tags;
+    if (pendingData.isActive !== undefined) localIsActive.value = pendingData.isActive;
+  }
+
+  showEditModal.value = true;
+}
+
+// Reset fields
+const isFieldModified = (field: keyof Omit<Product, 'id'>): boolean => {
+  const currentValue = {
     title: localTitle.value,
     price: localPrice.value,
     description: localDescription.value,
     ingredients: localIngredients.value,
     tags: localTags.value,
-    isActive: localIsActive.value
-  }
+    isActive: localIsActive.value,
+    imageSrc: localImageSrc.value
+  }[field]
 
-  if (JSON.stringify(currentData) !== JSON.stringify(originalData.value)) {
-    pendingChangesStore.addProductChange(id.value, currentData)
-  } else {
-    pendingChangesStore.removeProductChange(id.value)
-  }
+  const originalValue = originalData.value[field]
 
-  showEditModal.value = false
+  if (Array.isArray(originalValue)) {
+    return JSON.stringify(currentValue) !== JSON.stringify(originalValue)
+  }
+  return currentValue !== originalValue
 }
 
-// Funzione per resettare un campo specifico
-const resetField = (field: keyof typeof originalData.value) => {
+const resetField = (field: keyof Product) => {
+  const original = originalData.value[field]
   switch (field) {
     case 'title':
-      localTitle.value = originalData.value.title
+      localTitle.value = original as string
       break
     case 'price':
-      localPrice.value = originalData.value.price
+      localPrice.value = original as number
       break
     case 'description':
-      localDescription.value = originalData.value.description
+      localDescription.value = original as string
       break
     case 'ingredients':
-      localIngredients.value = [...originalData.value.ingredients]
+      localIngredients.value = [...original as string[]]
       break
     case 'tags':
-      localTags.value = [...originalData.value.tags]
+      localTags.value = [...original as string[]]
       break
     case 'isActive':
-      localIsActive.value = originalData.value.isActive
+      localIsActive.value = original as boolean
+      break
+    case 'imageSrc':
+      localImageSrc.value = original as string
+      imageFile.value = null
       break
   }
   checkForChanges()
 }
 
-// Funzione per resettare tutti i campi
 const resetAll = () => {
   localTitle.value = originalData.value.title
   localPrice.value = originalData.value.price
@@ -205,11 +188,19 @@ const resetAll = () => {
   localIsActive.value = originalData.value.isActive
   checkForChanges()
 }
+
+// Watch per modifiche durante il modal aperto
+watchEffect(() => {
+  if (showEditModal.value) checkForChanges()
+})
 </script>
 
 <template>
-  <div class="card-container"
-    :class="{ 'inactive': hasPendingChanges ? pendingChangesStore.productChanges[id]?.isActive === false : !localIsActive }">
+  <div class="card-container" :class="{
+    'inactive': hasPendingChanges
+      ? pendingChangesStore.productChanges[productId]?.isActive === false
+      : !localIsActive
+  }">
     <div v-if="hasPendingChanges" class="pending-dot"></div>
 
     <div class="switch-container">
@@ -218,34 +209,35 @@ const resetAll = () => {
       </button>
     </div>
 
-    <button class="edit-btn" @click.stop="openEditModal">
+    <button class="edit-btn" @click.stop="openEditModal" v-if="editable">
       <IconEdit />
     </button>
 
     <div class="card-wrapper">
       <div class="card-side card-front">
         <div class="card-product">
-          <button v-if="isImgModified" class="image-reset-btn reset-btn" @click.stop="resetImage" title="Ripristina immagine">
-              ↺
+          <button v-if="isImgModified" class="image-reset-btn reset-btn" @click.stop="resetImage"
+            title="Ripristina immagine">
+            ↺
           </button>
           <div class="image-wrapper" @mouseover="isHoveringImg = true" @mouseleave="isHoveringImg = false"
             @click="fileInput?.click()">
-            <img :src="localImageSrc" :alt="imageAlt" class="product-image" />
+            <img :src="localImageSrc" :alt="product?.title" class="product-image" />
             <div v-if="isHoveringImg" class="edit-overlay">
-              <IconEdit class="img-edit-icon"/>
+              <IconEdit class="img-edit-icon" />
             </div>
             <input type="file" ref="fileInput" accept="image/*" @change="handleImageUpload" style="display: none" />
           </div>
           <div class="info">
             <h3 class="title">{{ localTitle }}</h3>
-            <p class="price">{{ localPrice?.toFixed(2) }}€</p>
+            <p class="price">{{ localPrice.toFixed(2) }}€</p>
           </div>
         </div>
       </div>
     </div>
 
     <div v-if="showEditModal" class="edit-modal">
-      <div class="modal-backdrop" @click.self="saveAsPending">
+      <div class="modal-backdrop" @click.self="showEditModal = false">
         <div class="modal-content">
           <h2>Modifica Prodotto</h2>
 
@@ -254,55 +246,60 @@ const resetAll = () => {
           </div>
 
           <div class="form-group">
-            <label>
-              Titolo:
-              <!-- compare solo se effettivamente diverso -->
-              <button v-if="isFieldModified('title')" class="reset-btn" @click="resetField('title')"
-                title="Ripristina al valore originale">↺</button>
-            </label>
+            <div class="label-wrapper">
+              <span>Titolo:</span>
+              <button v-if="isFieldModified('title')" class="reset-btn" @click.stop="resetField('title')"
+                title="Ripristina al valore originale">
+                ↺
+              </button>
+            </div>
             <input v-model="localTitle" />
           </div>
 
           <div class="form-group">
-            <label>
-              Prezzo (€):
-              <button v-if="isFieldModified('price')" class="reset-btn" @click="resetField('price')"
+            <div class="label-wrapper">
+              <span>Prezzo (€):</span>
+              <button v-if="isFieldModified('price')" class="reset-btn" @click.stop="resetField('price')"
                 title="Ripristina al valore originale">↺</button>
-            </label>
+            </div>
             <input type="number" v-model.number="localPrice" step="0.01" />
           </div>
 
           <div class="form-group">
-            <label>
-              Descrizione:
-              <button v-if="isFieldModified('description')" class="reset-btn" @click="resetField('description')"
+            <div class="label-wrapper">
+              <span>Descrizione:</span>
+              <button v-if="isFieldModified('description')" class="reset-btn" @click.stop="resetField('description')"
                 title="Ripristina al valore originale">↺</button>
-            </label>
+            </div>
             <textarea v-model="localDescription" />
           </div>
 
           <div class="form-group">
-            <label>Ingredienti:</label>
-            <div class="ingredients-list">
-              <div v-for="ingredient in filtersStore.allIngredients" :key="ingredient" class="ingredient-item">
-                <input type="checkbox" :value="ingredient" v-model="localIngredients" />
-                {{ ingredient }}
+            <div class="label-wrapper">
+              <span>Ingredienti:</span>
+              <div class="ingredients-list">
+                <div v-for="ingredient in filtersStore.allIngredients" :key="ingredient" click.stop="ingredient-item">
+                  <input type="checkbox" :value="ingredient" v-model="localIngredients" />
+                  {{ ingredient }}
+                </div>
               </div>
             </div>
           </div>
 
           <div class="form-group">
-            <label>Tags:</label>
-            <div class="tags-list">
-              <div v-for="tag in filtersStore.allTags" :key="tag" class="tag-item">
-                <input type="checkbox" :value="tag" v-model="localTags" />
-                {{ tag }}
+            <div class="label-wrapper">
+              <span>Tags:</span>
+              <div class="tags-list">
+                <div v-for="tag in filtersStore.allTags" :key="tag" class="tag-item">
+                  <input type="checkbox" :value="tag" v-model="localTags" />
+                  {{ tag }}
+                </div>
               </div>
             </div>
           </div>
 
           <div class="modal-actions">
-            <button class="btn secondary" @click="saveAsPending">Conferma</button>
+            <button class="btn secondary" @click="showEditModal = false">Chiudi</button>
           </div>
         </div>
       </div>
@@ -488,13 +485,21 @@ const resetAll = () => {
 
 .form-group {
   margin-bottom: 1.2rem;
+  width: 100%;
 }
 
-.form-group label {
-  display: block;
+.label-wrapper {
+  display: flex;
+  align-items: flex-start;
+  align-items: center;
+  gap: 0.5rem;
   margin-bottom: 0.5rem;
-  color: var(--poldo-text);
-  font-weight: 500;
+}
+
+.label-wrapper>span {
+  font-weight: 600;
+  color: var(--poldo-primary);
+  margin-bottom: 0.5rem;
 }
 
 .form-group input,
@@ -517,22 +522,26 @@ const resetAll = () => {
 
 .ingredients-list,
 .tags-list {
+  width: 100%;
   max-height: 200px;
   overflow-y: auto;
-  padding: 0.8rem;
-  background: var(--background-soft);
+  padding: 0.5rem;
+  background: var(--color-background-soft);
   border-radius: 8px;
   border: 1px solid var(--color-border);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.5rem;
 }
 
 .ingredient-item,
 .tag-item {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.ingredient-item:last-child,
-.tag-item:last-child {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: background 0.2s ease;
   border-bottom: none;
 }
 
@@ -540,6 +549,8 @@ input[type="checkbox"] {
   width: 18px;
   height: 18px;
   accent-color: var(--poldo-primary);
+  margin: 0;
+  flex-shrink: 0;
 }
 
 input[type="checkbox"]:checked {
@@ -616,8 +627,10 @@ input[type="checkbox"]:checked {
   color: var(--poldo-primary);
   cursor: pointer;
   margin-left: 0.5rem;
-  padding: 0 0.3rem;
-  font-size: 0.9em;
+  padding: 0;
+  font-size: 1.5em;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .reset-btn:hover {

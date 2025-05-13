@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useProductsStore } from '@/stores/products'
-import { useFiltersStore } from '@/stores/filters'
-import { usePendingChangesStore } from '@/stores/pendingChanges'
+import { useGestioneProductsStore } from '@/stores/Gestione/products'
+import { useFiltersStore } from '@/stores/Gestione/filters'
+import { usePendingChangesStore } from '@/stores/Gestione/pendingChanges'
 
 import CardGrid from '@/components/CardGrid.vue'
 import CardProdotto from '@/components/Gestione/CardProdotto.vue'
@@ -11,7 +11,7 @@ import Filtri from '@/components/Gestione/Filtri.vue'
 import SearchBar from '@/components/SearchBar.vue'
 
 const router = useRouter()
-const productsStore = useProductsStore()
+const productsStore = useGestioneProductsStore()
 const filtersStore = useFiltersStore()
 const pendingChangesStore = usePendingChangesStore()
 const searchQuery = ref('')
@@ -99,15 +99,39 @@ const groupedByMacro = computed(() => {
 // Save changes
 const saveAllChanges = async () => {
   try {
+    // Salvataggio modifiche prodotti
     for (const [id, data] of Object.entries(pendingChangesStore.productChanges)) {
-      await productsStore.updateProduct(Number(id), data)
+      await productsStore.updateProduct(Number(id), data);
     }
-    pendingChangesStore.clearAllChanges()
+
+    // Salvataggio modifiche filtri
+    for (const change of pendingChangesStore.filterChanges) {
+      switch (change.type) {
+        case 'ingredient':
+          if (change.action === 'create') await filtersStore.addIngredient(change.name);
+          if (change.action === 'update') await filtersStore.updateIngredient(change.name, change.newName!);
+          break;
+        case 'tag':
+          if (change.action === 'create') await filtersStore.addTag(change.name);
+          if (change.action === 'update') await filtersStore.updateTag(change.name, change.newName!);
+          break;
+      }
+    }
+
+    window.location.reload();
+
   } catch (error) {
-    console.error('Salvataggio fallito:', error)
-    alert("Errore durante il salvataggio")
+    console.error('Errore durante il salvataggio:', error);
+    alert(`Errore durante il salvataggio: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
+
+    await Promise.all([
+      productsStore.initializeProducts(),
+      filtersStore.initializeFilters()
+    ]);
+  } finally {
+    pendingChangesStore.clearAllChanges();
   }
-}
+};
 
 // Responsive handling
 const onResize = () => isMobile.value = window.innerWidth <= 768
@@ -156,7 +180,8 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
 
         <!-- Mobile view -->
         <CardGrid v-if="isMobile" :minWidth="'300px'">
-          <CardProdotto v-for="product in macroFilteredProducts" :key="product.id" v-bind="product" :editable="true" />
+          <CardProdotto v-for="product in macroFilteredProducts" :product-id="product.id" v-bind="product"
+            :editable="true" />
         </CardGrid>
 
         <!-- Desktop view -->
@@ -164,7 +189,7 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
           <div v-for="(products, macro) in groupedByMacro" :key="macro">
             <h2 v-if="products.length > 0" class="macro-title">{{ macro }}</h2>
             <CardGrid :minWidth="'280px'">
-              <CardProdotto v-for="product in products" :key="product.id" v-bind="product" :editable="true" />
+              <CardProdotto v-for="product in products" :product-id="product.id" v-bind="product" :editable="true" />
             </CardGrid>
           </div>
         </template>
