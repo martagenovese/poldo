@@ -101,7 +101,7 @@ router.get('/paninari', authenticateJWT, authorizeRole(['admin']), async (req, r
         }
         
         if (classe) {
-            console.log("classe: " + classe);
+            //console.log("classe: " + classe);
             query += ' AND c.nome = ?';
             queryParams.push(classe);
         }

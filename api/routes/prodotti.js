@@ -135,7 +135,7 @@ async function filterProducts(filters) {
        ${orderBy}
     `;
   
-    console.log("Query:", bigQuery);
+    //console.log("Query:", bigQuery);
 
     try {
       const [rows] = await pool.execute(bigQuery, params);
@@ -417,16 +417,11 @@ router.delete('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), asyn
 })
 
 // Aggiorna un prodotto
-router.put('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
-    const { nome, prezzo, descrizione, tags, ingredienti } = req.body;
+router.patch('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
+    const { nome, prezzo, descrizione, tags, ingredienti, idGestione } = req.body;
     
-    if(!nome || !prezzo || !descrizione || tags.length <= 0 || ingredienti.length <= 0) {
-        return res.status(400).json({ error: 'Inserire nome, descrizione, prezzo, tag e ingredienti' });
-    }
-    
-    if(req.user.ruolo === 'admin'){
-        const {idGestione} = req.body;
-        if(!idGestione){
+    if(req.user.ruolo === 'admin') {
+        if(!idGestione) {
             return res.status(400).json({ error: 'Inserire idGestione' });
         }
         req.user.idGestione = idGestione;
@@ -436,44 +431,74 @@ router.put('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async (
     try {
         await connection.beginTransaction();
 
-        const [productResult] = await connection.execute(
-            'UPDATE Prodotto SET nome = ?, prezzo = ?, descrizione = ? WHERE idProdotto = ? AND proprietario = ?',
-            [nome, prezzo, descrizione, req.params.id, req.user.idGestione]
-        );
-
-        if (productResult.affectedRows === 0) {
-            return res.status(404).json({ error: 'Prodotto non trovato o non tuo' });
+        // Costruisci dinamicamente l'UPDATE per i campi base
+        const updateFields = [];
+        const updateValues = [];
+        
+        if(nome !== undefined) {
+            updateFields.push('nome = ?');
+            updateValues.push(nome);
+        }
+        
+        if(prezzo !== undefined) {
+            updateFields.push('prezzo = ?');
+            updateValues.push(prezzo);
+        }
+        
+        if(descrizione !== undefined) {
+            updateFields.push('descrizione = ?');
+            updateValues.push(descrizione);
         }
 
-        if (tags && tags.length > 0) {
+        let productResult;
+        if(updateFields.length > 0) {
+            const query = `UPDATE Prodotto SET ${updateFields.join(', ')} WHERE idProdotto = ? AND proprietario = ?`;
+            const params = [...updateValues, req.params.id, req.user.idGestione];
+            [productResult] = await connection.execute(query, params);
+            
+            if(productResult.affectedRows === 0) {
+                await connection.rollback();
+                return res.status(404).json({ error: 'Prodotto non trovato o non tuo' });
+            }
+        }
+
+        // Aggiorna i tag solo se presenti nella richiesta
+        if(tags !== undefined) {
             await connection.execute(
                 'DELETE FROM ProdottoTag WHERE idProdotto = ?',
                 [req.params.id]
             );
-            const tagData = tags.map(tag => [req.params.id, tag]);
-            await connection.query(
-                'INSERT INTO ProdottoTag (idProdotto, tag) VALUES ?',
-                [tagData]
-            );
+            
+            if(tags.length > 0) {
+                const tagData = tags.map(tag => [req.params.id, tag]);
+                await connection.query(
+                    'INSERT INTO ProdottoTag (idProdotto, tag) VALUES ?',
+                    [tagData]
+                );
+            }
         }
 
-        if(ingredienti && ingredienti.length > 0) {
+        // Aggiorna ingredienti solo se presenti nella richiesta
+        if(ingredienti !== undefined) {
             await connection.execute(
                 'DELETE FROM ProdottoIngrediente WHERE idProdotto = ?',
                 [req.params.id]
             );
-            const ingredientiData = ingredienti.map(ingrediente => [req.params.id, ingrediente]);
-            await connection.query(
-                'INSERT INTO ProdottoIngrediente (idProdotto, ingrediente) VALUES ?',
-                [ingredientiData]
-            );
+            
+            if(ingredienti.length > 0) {
+                const ingredientiData = ingredienti.map(ing => [req.params.id, ing]);
+                await connection.query(
+                    'INSERT INTO ProdottoIngrediente (idProdotto, ingrediente) VALUES ?',
+                    [ingredientiData]
+                );
+            }
         }
 
         await connection.commit();
         res.status(200).json({ message: 'Prodotto modificato con successo' });
     } catch (error) {
         await connection.rollback();
-        console.log("Errore aggiornamento prodotto: " + error);
+        console.error("Errore aggiornamento prodotto:", error);
         res.status(500).json({ error: 'Errore interno del server' });
     } finally {
         connection.release();

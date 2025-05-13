@@ -68,6 +68,9 @@ module.exports = {
                 return next();
             }
 
+            console.log(roles);
+            console.log(userRole);
+
             res.status(403).json({ error: 'Accesso negato' });
 
         } catch (error) {
