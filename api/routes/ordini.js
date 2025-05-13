@@ -926,6 +926,7 @@ router.get('/prodotti',
                 FROM Prodotto p
                 LEFT JOIN DettagliOrdineSingolo dos ON p.idProdotto = dos.idProdotto
                 LEFT JOIN OrdineSingolo os ON dos.idOrdineSingolo = os.idOrdine
+                LEFT JOIN OrdineClasse oc ON oc.idOrdine = os.idOrdineClasse
                 WHERE 1=1
             `;
 
