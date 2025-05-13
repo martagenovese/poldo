@@ -2,6 +2,7 @@
 defineProps<{
     width?: string;
     height?: string;
+    class?: string;
 }>();
 </script>
 

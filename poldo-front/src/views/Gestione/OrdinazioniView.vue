@@ -58,6 +58,7 @@ interface ClassOrder {
   prodotti: Product[]
   confermato?: boolean
   oraRitiro?: string
+  preparato?: boolean
 }
 
 // Ref
@@ -121,9 +122,9 @@ const fetchProfOrders = async () => {
         const processedOrder = {
           ...order,
           prodotti: Array.isArray(order.prodotti) ? order.prodotti : [],
-          classe: order.classe || 'Sconosciuto',
+          classe: order.classe,
           userRole: 'prof',
-          oraRitiro: order.oraRitiro ? order.oraRitiro : null
+          oraRitiro: order.oraRitiro
         };
         
         if (order.user) {
@@ -164,8 +165,9 @@ const fetchClassOrders = async () => {
       .map((order: any) => ({
         ...order,
         prodotti: Array.isArray(order.prodotti) ? order.prodotti : [],
-        classe: order.classe || 'Sconosciuta',
-        confermato: order.confermato === undefined ? true : order.confermato
+        classe: order.classe,
+        confermato: order.confermato,
+        preparato: order.preparato
       }))
   } catch (err) {
     console.error('Errore nel recupero degli ordini per classe:', err)
@@ -175,7 +177,7 @@ const fetchClassOrders = async () => {
   }
 }
 
-// Orari del turno selezionato
+// Orari del turno selezionato  
 const selectedTurnoTimes = computed(() => {
   if (showProfessorTimeline.value) {
     return {
@@ -191,14 +193,14 @@ const selectedTurnoTimes = computed(() => {
   if (!turno) {
     console.error(`Turno ${selectedTurno.value} not found!`);
     error.value = `Turno ${selectedTurno.value} non trovato. Selezionare un altro turno.`
-    return 
+    return null
   }
   
   return {
-    orderStart: turno.oraInizio || '08:00',
-    orderEnd: turno.oraFine || '10:00',
-    pickupStart: turno.inizioRitiro || '11:00',
-    pickupEnd: turno.fineRitiro || '13:00'
+    orderStart: turno.oraInizio,
+    orderEnd: turno.oraFine,
+    pickupStart: turno.inizioRitiro,
+    pickupEnd: turno.fineRitiro
   }
 })
 
@@ -212,15 +214,58 @@ const handleTurnoChange = async (turno: number) => {
   if (turno === 2) {
     classOrders.value = profOrders.value.map(order => ({
       ...order,
-      classe: order.classe || 'Sconosciuto',
+      classe: order.classe,
       data: order.data,
       prodotti: Array.isArray(order.prodotti) ? order.prodotti : [],
-      confermato: order.confermato === undefined ? true : order.confermato,
+      confermato: order.confermato,
       oraRitiro: order.oraRitiro,
+      preparato: order.preparato,
       userData: order.userData
     }));
   } else {
     await fetchClassOrders();
+  }
+}
+
+// Handler for when an order is marked as prepared
+const handleOrderMarkedAsPrepared = async ({ classe, turno }: { classe: string, turno: number }) => {
+  // Refresh the orders after an order is marked as prepared
+  if (turno === 2) {
+    await fetchProfOrders()
+    
+    classOrders.value = profOrders.value.map(order => ({
+      ...order,
+      classe: order.classe,
+      data: order.data,
+      prodotti: Array.isArray(order.prodotti) ? order.prodotti : [],
+      confermato: order.confermato,
+      oraRitiro: order.oraRitiro,
+      preparato: order.preparato,
+      userData: order.userData
+    }));
+  } else {
+    await fetchClassOrders()
+  }
+}
+
+// Handler for when a product is marked as prepared
+const handleProductMarkedAsPrepared = async ({ productId, turno }: { productId: number, turno: number }) => {
+  // Refresh the orders after a product is marked as prepared
+  if (turno === 2) {
+    await fetchProfOrders()
+    
+    classOrders.value = profOrders.value.map(order => ({
+      ...order,
+      classe: order.classe,
+      data: order.data,
+      prodotti: Array.isArray(order.prodotti) ? order.prodotti : [],
+      confermato: order.confermato,
+      oraRitiro: order.oraRitiro,
+      preparato: order.preparato,
+      userData: order.userData
+    }));
+  } else {
+    await fetchClassOrders()
   }
 }
 
@@ -241,11 +286,12 @@ onMounted(async () => {
   if (selectedTurno.value === 2) {
     classOrders.value = profOrders.value.map(order => ({
       ...order,
-      classe: order.classe || 'Sconosciuto',
+      classe: order.classe,
       data: order.data,
       prodotti: Array.isArray(order.prodotti) ? order.prodotti : [],
-      confermato: order.confermato === undefined ? true : order.confermato,
+      confermato: order.confermato,
       oraRitiro: order.oraRitiro,
+      preparato: order.preparato,
       userData: order.userData
     }));
   } else {
@@ -285,10 +331,15 @@ onMounted(async () => {
         />
 
         <div class="orders-content">
-          <ProductTotals :classOrders="classOrders" />
+          <ProductTotals 
+            :classOrders="classOrders" 
+            :currentTurno="selectedTurno" 
+            @product-marked-as-prepared="handleProductMarkedAsPrepared" 
+          />
           <ClassOrders 
             :classOrders="classOrders"
             :selectedTurno="selectedTurno"
+            @orderMarkedAsPrepared="handleOrderMarkedAsPrepared"
           />
         </div>
       </div>

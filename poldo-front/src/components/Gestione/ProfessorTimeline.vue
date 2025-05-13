@@ -4,7 +4,7 @@
     :class="{ 'detail-view': isDetailView }"
     @click="!isDetailView && handleTimelineClick()"
   >
-    <!-- Removed button from header and added as absolute positioned element -->
+    <!-- Reload button -->
     <button @click.stop="$emit('reload')" class="reload-btn">
       <svg class="reload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M23 4v6h-6"></path>
@@ -16,15 +16,18 @@
     
     <div class="timeline-header">
       <div class="timeline-header-actions">
-        <!-- Removed the button from here -->
+        <!-- Header actions if needed -->
       </div>
     </div>
+    
     <div v-if="profOrders.length === 0" class="no-data">
       Nessun ordine da visualizzare sulla timeline
     </div>
+    
     <div v-else-if="!timelineProfOrders || timelineProfOrders.length === 0" class="no-data">
       <p>Ci sono {{ profOrders.length }} ordini di professori, ma nessuno con orario di ritiro valido.</p>
     </div>
+    
     <div v-else class="timeline-container" ref="timelineRef">
       <div class="timeline-wrapper">
         <TimelineSlots />
@@ -49,6 +52,8 @@ import TimelineOrderCard from './TimelineOrderCard.vue'
 import TimelineSlots from './TimelineSlots.vue'
 import TimeIndicator from './TimeIndicator.vue'
 import { formatTime } from '@/utils/timelineUtils'
+import { calculateTimePosition } from '@/utils/timelineUtils'
+import { useRouter } from 'vue-router'
 
 // Definisce le interfacce per il componente
 interface Product {
@@ -65,6 +70,7 @@ interface Order {
   oraRitiro?: string;
   prodotti: Product[];
   userData?: any;
+  preparato?: boolean;
 }
 
 interface TurnoTimes {
@@ -84,16 +90,8 @@ const props = defineProps({
     type: Array as () => Order[],
     required: true
   },
-  turnoTimes: {
-    type: Object as () => TurnoTimes | null,
-    required: true,
-    // Fornisce un valore predefinito per evitare errori null
-    default: () => ({
-      orderStart: '08:00',
-      orderEnd: '10:00',
-      pickupStart: '11:00',
-      pickupEnd: '13:00'
-    })
+  turnoTimes: {    type: Object as () => TurnoTimes | null,
+    required: true
   },
   isDetailView: {
     type: Boolean,
@@ -131,13 +129,13 @@ const timelineProfOrders = computed<TimelineOrder[]>(() => {
     order && typeof order === 'object' && order.oraRitiro !== undefined && order.oraRitiro !== null
   );
   
-  
   if (ordersWithRitiro.length === 0) {
     console.warn("Nessun ordine con ritiro trovato");
     return [];
   }
   
-  return ordersWithRitiro.map(order => {
+  // Map orders to timeline orders with position
+  const mappedOrders = ordersWithRitiro.map(order => {
     try {
       // Usa l'orario di ritiro dell'ordine
       const pickupTime = formatTime(order.oraRitiro || '');
@@ -167,51 +165,56 @@ const timelineProfOrders = computed<TimelineOrder[]>(() => {
       };
     }
   });
-})
+  
+  // Sort orders - unprepared first, then prepared (to push prepared orders to the bottom)
+  return mappedOrders.sort((a, b) => {
+    // If one is prepared and the other is not, the unprepared one comes first
+    if (a.preparato !== b.preparato) {
+      return a.preparato ? 1 : -1; // Push prepared to the bottom
+    }
+    return 0; // Keep original order if preparation status is the same
+  });
+});
+
+// Router for navigation
+const router = useRouter();
+
+// Handle click on timeline to navigate to the specialized view
+const handleTimelineClick = () => {
+  router.push('/gestione/ordinazioni/prof');
+};
 
 onMounted(() => {
   // Imposta un timer per aggiornare l'ora corrente
-  updateCurrentTime()
-  timeUpdateInterval = window.setInterval(updateCurrentTime, 30000) // Aggiorna ogni 30 secondi
+  updateCurrentTime();
+  timeUpdateInterval = window.setInterval(updateCurrentTime, 30000); // Aggiorna ogni 30 secondi
   
   // Scorri la timeline in modo che il tempo corrente sia al 20% della viewport
   const scrollToPositionCurrent = () => {
     if (timelineRef.value) {
-      const timelineWidth = timelineRef.value.scrollWidth
-      const viewportWidth = timelineRef.value.clientWidth
+      const timelineWidth = timelineRef.value.scrollWidth;
+      const viewportWidth = timelineRef.value.clientWidth;
       
       // Calcola la posizione di scorrimento in modo che l'ora corrente sia al 20% della viewport
-      const currentPosition = calculateTimePosition(`${currentTime.value.getHours()}:${currentTime.value.getMinutes()}`)
-      const scrollPosition = (currentPosition / 100 * timelineWidth) - (viewportWidth * 0.2)
-      timelineRef.value.scrollLeft = Math.max(0, scrollPosition)
+      const currentPosition = calculateTimePosition(`${currentTime.value.getHours()}:${currentTime.value.getMinutes()}`);
+      const scrollPosition = (currentPosition / 100 * timelineWidth) - (viewportWidth * 0.2);
+      timelineRef.value.scrollLeft = Math.max(0, scrollPosition);
     }
-  }
+  };
   
   // Scorri inizialmente e ogni volta che cambia l'ora corrente
-  setTimeout(scrollToPositionCurrent, 500) // Piccolo ritardo per assicurarsi che il DOM sia pronto
+  setTimeout(scrollToPositionCurrent, 500); // Piccolo ritardo per assicurarsi che il DOM sia pronto
   
   // Aggiorna anche la posizione di scorrimento quando cambia l'ora (ogni 30 secondi)
-  window.setInterval(scrollToPositionCurrent, 30000)
-})
+  window.setInterval(scrollToPositionCurrent, 30000);
+});
 
 onUnmounted(() => {
   // Cancella l'intervallo quando il componente viene smontato
   if (timeUpdateInterval) {
-    clearInterval(timeUpdateInterval)
+    clearInterval(timeUpdateInterval);
   }
-})
-
-// Import the calculateTimePosition from utility
-import { calculateTimePosition } from '@/utils/timelineUtils'
-import { useRouter } from 'vue-router'
-
-// Router for navigation
-const router = useRouter()
-
-// Handle click on timeline to navigate to the specialized view
-const handleTimelineClick = () => {
-  router.push('/gestione/ordinazioni/prof')
-}
+});
 </script>
 
 <style scoped>

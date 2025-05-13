@@ -1,6 +1,7 @@
 <template>
   <div 
     class="timeline-order"
+    :class="{ 'order-prepared': order.preparato }"
     :style="{ left: `${order.position}%` }"
   >
     <!-- Add time marker that shows exactly where the time point is -->
@@ -23,6 +24,7 @@
           <span class="product-name">{{ product.nome }}</span>
         </div>
       </div>
+      <div v-if="order.preparato" class="prepared-badge">Preparato</div>
     </div>
   </div>
 </template>
@@ -45,6 +47,7 @@ interface Order {
   prodotti: Product[];
   userData?: any;
   position: number;
+  preparato?: boolean;
 }
 
 const props = defineProps<{
@@ -54,10 +57,9 @@ const props = defineProps<{
 // Calcola il prezzo totale per un ordine
 const calculateOrderTotal = (order: Order): number => {
   if (!order.prodotti || !Array.isArray(order.prodotti)) return 0
-  
-  return order.prodotti.reduce((total, product) => {
-    const price = product.prezzo || 0
-    const quantity = product.quantita || 0
+    return order.prodotti.reduce((total, product) => {
+    const price = product.prezzo
+    const quantity = product.quantita
     return total + (price * quantity)
   }, 0)
 }
@@ -78,9 +80,8 @@ const getUserDisplayName = (order: Order): string => {
   if (order.user) {
     return `#${order.user}`;
   }
-  
-  // Se tutto il resto fallisce
-  return 'Professore sconosciuto';
+    // Se tutto il resto fallisce
+  return 'ID ordine: ' + order.idOrdine;
 }
 </script>
 
@@ -92,6 +93,26 @@ const getUserDisplayName = (order: Order): string => {
   max-width: 250px;
   padding: 0;
   z-index: 5;
+}
+
+.order-prepared {
+  opacity: 0.7;
+}
+
+.order-prepared .order-detail-card {
+  border-left: 3px solid var(--poldo-secondary, #999);
+  background-color: rgba(var(--poldo-background-soft-rgb, 245, 245, 245), 0.5);
+}
+
+.prepared-badge {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background-color: var(--poldo-secondary, #999);
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 /* Time marker - vertical line indicating exact position */
@@ -149,33 +170,29 @@ const getUserDisplayName = (order: Order): string => {
 
 .order-detail-card .order-product {
   padding: 4px;
-  border-bottom: 1px dotted var(--color-border);
-  font-size: 0.8rem;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-}
-
-.order-detail-card .product-quantity {
-  font-weight: bold;
-  color: var(--poldo-primary);
-  margin-right: 6px;
-  min-width: 24px;
-  text-align: center;
-}
-
-.order-detail-card .product-name {
-  flex: 1;
+  border-bottom: 1px solid var(--color-border-light, #eee);
 }
 
 .order-detail-card .order-product:last-child {
   border-bottom: none;
 }
 
-.order-detail-card .order-total {
+.order-detail-card .product-quantity {
+  font-weight: bold;
   color: var(--poldo-primary);
-  text-align: right;
-  padding: 4px 8px;
-  border-radius: 4px;
+  margin-right: 8px;
+}
+
+.order-detail-card .product-name {
+  font-size: 0.85rem;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.order-detail-card .order-total {
+  font-size: 0.9rem;
+  color: var(--poldo-accent);
 }
 </style>

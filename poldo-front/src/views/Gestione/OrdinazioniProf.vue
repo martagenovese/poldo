@@ -67,13 +67,28 @@
               v-for="order in filteredOrders" 
               :key="order.idOrdine" 
               class="order-item"
+              :class="{ 'order-prepared': order.preparato }"
             >
               <div class="order-header">
                 <div class="order-user">{{ getOrderUserName(order) }}</div>
                 <div v-if="order.oraRitiro" class="order-time">
                   Ritiro: {{ formatTime(order.oraRitiro) }}
                 </div>
+                
+                <button 
+                  v-if="!order.preparato" 
+                  class="mark-prepared-btn"
+                  @click="markOrderAsPrepared(order)"
+                  title="Segna come preparato"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </button>
+                
+                <div v-if="order.preparato" class="prepared-badge">Preparato</div>
               </div>
+              
               <div class="order-products">
                 <div 
                   v-for="product in order.prodotti" 
@@ -220,9 +235,9 @@ const fetchOrders = async () => {
         const processedOrder = {
           ...order,
           prodotti: Array.isArray(order.prodotti) ? order.prodotti : [],
-          classe: order.classe || 'Sconosciuto',
+          classe: order.classe,
           userRole: 'prof',
-          oraRitiro: order.oraRitiro ? order.oraRitiro : null
+          oraRitiro: order.oraRitiro
         };
         
         if (order.user) {
@@ -292,23 +307,40 @@ const turnoTimes = computed(() => {
   };
 })
 const filteredOrders = computed<ClassOrder[]>(() => {
-  if (!filterApplied.value) {
-    return professorOrders.value;
+  let orders = professorOrders.value;
+  
+  if (filterApplied.value) {
+    // Convert the start/end times to minutes for comparison
+    const startMinutes = timeToMinutes(startTime.value)
+    const endMinutes = timeToMinutes(endTime.value)
+    
+    orders = orders.filter(order => {
+      if (!order.oraRitiro) return false
+      
+      // Convert the order's pickup time to minutes
+      const pickupTime = formatTime(order.oraRitiro)
+      const pickupMinutes = timeToMinutes(pickupTime)
+      
+      // Check if pickup time is within the range
+      return pickupMinutes >= startMinutes && pickupMinutes <= endMinutes
+    });
   }
   
-  // Convert the start/end times to minutes for comparison
-  const startMinutes = timeToMinutes(startTime.value)
-  const endMinutes = timeToMinutes(endTime.value)
-  
-  return professorOrders.value.filter(order => {
-    if (!order.oraRitiro) return false
+  // Sort orders - unprepared first, then prepared (to push prepared orders to the bottom)
+  return orders.sort((a, b) => {
+    // If one is prepared and the other is not, the unprepared one comes first
+    if (a.preparato !== b.preparato) {
+      return a.preparato ? 1 : -1; // Push prepared to the bottom
+    }
     
-    // Convert the order's pickup time to minutes
-    const pickupTime = formatTime(order.oraRitiro)
-    const pickupMinutes = timeToMinutes(pickupTime)
+    // If both have the same prepared status, sort by pickup time
+    if (a.oraRitiro && b.oraRitiro) {
+      const timeA = timeToMinutes(formatTime(a.oraRitiro));
+      const timeB = timeToMinutes(formatTime(b.oraRitiro));
+      return timeA - timeB; // Sort by time ascending
+    }
     
-    // Check if pickup time is within the range
-    return pickupMinutes >= startMinutes && pickupMinutes <= endMinutes
+    return 0;
   });
 })
 
@@ -347,6 +379,44 @@ const calculateOrderTotal = (order: Order | ClassOrder): number => {
     const quantity = product.quantita || 0
     return total + (price * quantity)
   }, 0)
+}
+
+// Function to mark an order as prepared
+const markOrderAsPrepared = async (order: ClassOrder) => {
+  try {
+    if (!order.classe) {
+      console.error('Impossibile contrassegnare l\'ordine: classe mancante')
+      return
+    }
+    
+    if (!order.idOrdine) {
+      console.error('Impossibile contrassegnare l\'ordine: ID ordine mancante')
+      return
+    }
+    
+    const API_CONFIG = {
+      BASE_URL: 'http://localhost:5000/v1',
+      TOKEN: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NDgsInJ1b2xvIjoiYWRtaW4iLCJpYXQiOjE3NDQyNzk2ODMsImV4cCI6MTc3NTgzNzI4M30.AelK6BkvrydKSqNGuXbzWGzST4yctrHvdjy66XeoMHI"
+    }
+    
+    const response = await fetch(`${API_CONFIG.BASE_URL}/ordini/classi/${order.classe}/turno/2/prepara`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${API_CONFIG.TOKEN}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Errore API con stato ${response.status}`)
+    }
+    
+    // Refresh the orders after marking as prepared
+    await fetchOrders()
+  } catch (error) {
+    console.error('Errore nel marcare l\'ordine come preparato:', error)
+    alert('Errore nel marcare l\'ordine come preparato. Riprova.')
+  }
 }
 
 // Fetch orders on component mount
@@ -530,25 +600,46 @@ h2 {
   padding: 10px;
   border-left: 4px solid var(--poldo-primary);
   height: fit-content;
+  position: relative;
+}
+
+.order-prepared {
+  background-color: rgba(var(--poldo-background-soft-rgb, 245, 245, 245), 0.5);
+  opacity: 0.8;
+  border-left: 4px solid var(--poldo-secondary, #999);
+}
+
+.prepared-badge {
+  background-color: var(--poldo-secondary, #999);
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
 }
 
 .order-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   margin-bottom: 10px;
   font-weight: bold;
   border-bottom: 1px solid var(--color-border);
   padding-bottom: 5px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .order-user {
   color: var(--poldo-primary);
+  margin-right: auto;
 }
 
 .order-time {
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.85rem;
+  margin-right: 10px;
 }
 
 .order-products {
@@ -587,6 +678,38 @@ h2 {
   color: var(--poldo-accent);
   padding: 5px;
   border-radius: 4px;
+}
+
+.mark-prepared-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--poldo-primary, #4caf50);
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+  padding: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.mark-prepared-btn:hover {
+  background-color: var(--poldo-primary-dark, #388e3c);
+  transform: scale(1.05);
+}
+
+.mark-prepared-btn:active {
+  transform: scale(0.95);
+}
+
+.mark-prepared-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 /* Responsive adjustments */

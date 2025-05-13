@@ -2,13 +2,16 @@
   --poldo-primary: #FFB347;
   --poldo-background: #FFF8F0;
   --poldo-background-soft: #fff4d5;
+  --poldo-background-soft-rgb: 255, 244, 213;
   --poldo-accent: #FFA726;
   --poldo-text: #2A2200;
   --poldo-card-bg: #fceec2;
+  --poldo-card-bg-rgb: 252, 238, 194;
   --poldo-card-shadow: rgba(42, 34, 0, 0.1);
   --poldo-menu-bg: #fff4d5;
   --poldo-green: #689F38;
   --poldo-red: #D32F2F;
+  --poldo-secondary: #999;
 
   --color-background: var(--poldo-background);
   --color-background-soft: var(--poldo-background-soft);
@@ -38,13 +41,16 @@
     --poldo-primary: #FFA000;
     --poldo-background: #000000;
     --poldo-background-soft: #2A2200;
+    --poldo-background-soft-rgb: 42, 34, 0;
     --poldo-accent: #FFC107;
     --poldo-text: #EDE0D4;
     --poldo-card-bg: #2A2200;
+    --poldo-card-bg-rgb: 42, 34, 0;
     --poldo-card-shadow: rgba(0, 0, 0, 0.4);
     --poldo-menu-bg: #1A1200;
     --poldo-green: #558B2F;
     --poldo-red: #B71C1C;
+    --poldo-secondary: #888;
 
     --color-background: var(--poldo-background);
     --color-background-soft: var(--poldo-background-soft);
