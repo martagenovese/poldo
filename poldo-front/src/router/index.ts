@@ -9,6 +9,7 @@ import OrdinazioniView from '@/views/Gestione/OrdinazioniView.vue'
 import OrdinazioniProf from '@/views/Gestione/OrdinazioniProf.vue'
 import QRView from '../views/QrView.vue'
 import LoginView from '@/views/LoginView.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -17,6 +18,7 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView,
+      meta: { autenticated: true, role: ['admin','terminale','prof','segreteria','paninaro','studente','gestore'] }
     },
     {
       path: '/login',
@@ -27,57 +29,92 @@ const router = createRouter({
       path: '/prodotti',
       name: 'prodotti',
       component: ProdottiView,
-      meta: { requiresTurno: true }
+      meta: { requiresTurno: true, autenticated: true, role: ['admin','terminale','prof','segreteria','paninaro','studente','gestore'] }
     },
     {
       path: '/carrello',
       name: 'carrello',
       component: CarrelloView,
-      meta: { requiresTurno: true }
+      meta: { requiresTurno: true, autenticated: true, role: ['admin','terminale','prof','segreteria','paninaro','studente','gestore']  }
     },{
         path: '/qr',
         name: 'QRCode',
         component: QRView,
-        meta: { requiresTurno: true }
+        meta: { requiresTurno: true, autenticated: true, role: ['admin','prof','segreteria','paninaro']  }
     },
     {
       path: '/inserisciprodotto',
       name: 'inserisciProdotto',
       component: NewProdottiView,
+      meta: { autenticated: true, role: ['admin','gestore'] }
     },
     {
       path: '/gestione/prodotti',
       name: 'modificaProdotti',
       component: ModificaView,
+      meta: { autenticated: true, role: ['admin','gestore'] }
     },
     {
       path: '/gestione/ordinazioni',
       name: 'ordinazioni',
       component: OrdinazioniView,
+      meta: { autenticated: true, role: ['admin','gestore'] }
     },
     {
       path: '/gestione/ordinazioni/prof',
       name: 'ordinazioniProf',
       component: OrdinazioniProf,
+      meta: { autenticated: true, role: ['admin','gestore'] }
     }
   ],
 })
 
 // Navigation guard to check if turno is selected
-router.beforeEach((to, from, next) => {
-  // Skip check for routes that don't require turno
-  if (!to.meta.requiresTurno) {
-    next()
-    return
-  }
+router.beforeEach(async (to, from, next) => {
+    const turnoStore = useTurnoStore()
+    if(to.meta.requiresTurno && turnoStore.turnoSelezionato === -1){
+        console.log('Turno non selezionato')
+        next({ name: 'home' })
+        return
+    }
+    
+    if(!to.meta.autenticated){
+        next()
+        return
+    }
+    
+    const authStore = useAuthStore()
+    const logged = await authStore.checkAuth()
 
-  
-  const turnoStore = useTurnoStore()
-  if (turnoStore.turnoSelezionato === -1) {
-    next({ name: 'home' })
-  } else {
+    if(!logged){
+        console.log('User not authenticated')
+        next({ name: 'login' })
+        return
+    }
+
+    const roles = to.meta.role as string[] | undefined
+    const userRole = authStore.user?.ruolo
+
+    if(!roles || roles.length === 0){
+        next()
+        return
+    }
+
+    if(userRole === undefined){
+        console.log('User role not defined')
+        next({ name: 'login' })
+        return
+    }
+
+
+    if (!roles.includes(userRole)) {
+        console.log('User not authorized')
+        next({ name: 'home' })
+        return
+    }
+
     next()
-  }
+
 })
 
 export default router

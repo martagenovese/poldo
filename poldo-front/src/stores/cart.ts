@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useTurnoStore } from './turno'
 
+
 export interface CartItem {
   id: number
   quantity: number

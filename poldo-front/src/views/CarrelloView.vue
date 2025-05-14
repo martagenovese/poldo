@@ -5,11 +5,16 @@ import Alert from '@/components/Alert.vue'
 import QuantityControl from '@/components/ControlloQuantitaProdotto.vue'
 import type { OrdineClasse } from '@/stores/cartClasse'
 import QRModal from '@/components/QRModal.vue'
+import { useAuthStore } from '@/stores/auth'
+
 
 import { computed, ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useCartClasseStore } from '@/stores/cartClasse'
+
+const authStore = useAuthStore()
+const isNotStudente =  authStore.user ? authStore.user.ruolo !== 'studente' : false
 
 const cartStore = useCartStore()
 const productsStore = useProductsStore()
@@ -172,7 +177,7 @@ getCart();
         <Alert v-if="showCheckoutAlert" :type="altertype" :message="checkoutAlertMessage" @confirm="confermaOrdineAlert"
             @cancel="cancelOdr" @close="closeAlert" />
 
-        <div class="category-switch">
+        <div v-if="isNotStudente"class="category-switch">
 
             <div class="switch-container">
                 <button class="switch-btn" :class="{ active: selectedMacro === 'personale' }"

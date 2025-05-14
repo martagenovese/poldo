@@ -11,7 +11,6 @@ const turnoStore = useTurnoStore()
 
 defineProps<{
     img_profilo: string
-    nome: string
 }>()
 
 const pageTitles = {
