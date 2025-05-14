@@ -60,7 +60,14 @@ router.get('/google/callback', passport.authenticate('google', { failureRedirect
     
     //TODO: cambiare
     //res.status(200).json({token: token});
-    res.redirect(`http://localhost:5173/callback#token=${token}`);
+    res.cookie('jwt', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Lax', //TODO: cambiare lax-->domini diversi, strict-->dominio uguale
+        maxAge: 1000 * 60 * 3,
+    });
+    //res.redirect(`http://localhost:5173/callback#token=${token}`);
+    res.status(200).redirect('http://localhost:5173/callback');
 });
 
 router.post('/login', async (req, res) => {
