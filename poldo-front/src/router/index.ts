@@ -5,7 +5,7 @@ import CarrelloView from '../views/CarrelloView.vue'
 import { useTurnoStore } from '../stores/turno'
 import AuthView from '@/views/AuthView.vue'
 import ReportsView from '@/views/bar/ReportsView.vue'
-import NewProdottiView from '../views/Gestione/NewProdottiView.vue'
+import AddProdottoView from '../views/Gestione/AddProdottoView.vue'
 import ModificaView from '../views/Gestione/ProdottiView.vue'
 
 const router = createRouter({
@@ -29,9 +29,9 @@ const router = createRouter({
       meta: { requiresTurno: true }
     },
     {
-      path: '/inserisciprodotto',
-      name: 'inserisciProdotto',
-      component: NewProdottiView,
+      path: '/gestione/addProdotto',
+      name: 'addProdotto',
+      component: AddProdottoView,
     },
     {
       path: '/gestione/prodotti',

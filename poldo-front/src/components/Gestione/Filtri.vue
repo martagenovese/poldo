@@ -1,315 +1,327 @@
-<template>
-  <div>
-    <button class="filtri-btn" @click="toggleSidebar">
-      <span>Filtri</span>
-    </button>
-
-    <div ref="filtriContainer" class="sidebar" :class="{ open: isSidebarOpen }">
-      <div class="sidebar-content">
-        <div class="sidebar-header">
-          <h3>Gestione Ingredienti e Tag</h3>
-          <button class="close-btn" @click="toggleSidebar">×</button>
-        </div>
-
-        <!-- Sezione Ingredienti -->
-        <div class="filter-section">
-          <div class="section-header">
-            <h4 class="subtitle">Ingredienti</h4>
-            <div class="add-input compact">
-              <input
-                v-model="newIngredient"
-                placeholder="Nuovo..."
-                @keyup.enter="addNewIngredient"
-              />
-              <button @click="addNewIngredient">+</button>
-            </div>
-          </div>
-          <div class="inline-list">
-            <div
-              v-for="ingredient in visibleIngredients"
-              :key="ingredient.originalName"
-              class="inline-item"
-            >
-              <div class="editable-wrapper">
-                <input
-                  type="text"
-                  v-model="ingredient.currentName"
-                  @blur="updateIngredient(ingredient.originalName, ingredient.currentName)"
-                  class="compact-input"
-                />
-                <div v-if="hasPendingChange('ingredient', ingredient)" class="pending-dot"></div>
-              </div>
-              <button
-                class="delete-btn"
-                @click="deleteIngredient(ingredient.originalName)"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Sezione Tag -->
-        <div class="filter-section">
-          <div class="section-header">
-            <h4 class="subtitle">Tag</h4>
-            <div class="add-input compact">
-              <input
-                v-model="newTag"
-                placeholder="Nuovo..."
-                @keyup.enter="addNewTag"
-              />
-              <button @click="addNewTag">+</button>
-            </div>
-          </div>
-          <div class="inline-list">
-            <div
-              v-for="tag in visibleTags"
-              :key="tag.originalName"
-              class="inline-item"
-            >
-              <div class="editable-wrapper">
-                <input
-                  type="text"
-                  v-model="tag.currentName"
-                  @blur="updateTag(tag.originalName, tag.currentName)"
-                  class="compact-input"
-                />
-                <div v-if="hasPendingChange('tag', tag)" class="pending-dot"></div>
-              </div>
-              <button
-                class="delete-btn"
-                @click="deleteTag(tag.originalName)"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useProductsStore } from '@/stores/products'
-import { usePendingChangesStore } from '@/stores/pendingChanges'
+import { ref, computed, onMounted, nextTick, type ComponentPublicInstance, reactive } from 'vue'
+import type { PropType } from 'vue'
+import { useGestioneProductsStore } from '@/stores/Gestione/products'
+import { useFiltersStore } from '@/stores/Gestione/filters'
+import { usePendingChangesStore } from '@/stores/Gestione/pendingChanges'
+import IconEdit from '@/components/icons/IconEdit.vue'
 
-const productsStore = useProductsStore()
+defineProps({
+  usedIngredients: { type: Array as PropType<string[]>, required: true },
+  usedTags: { type: Array as PropType<string[]>, required: true }
+})
+
+const productsStore = useGestioneProductsStore()
+const filtersStore = useFiltersStore()
 const pendingChangesStore = usePendingChangesStore()
 
-const isSidebarOpen = ref(false)
-const filtriContainer = ref<HTMLElement | null>(null)
 const newIngredient = ref('')
 const newTag = ref('')
 
 interface PendingItem {
   originalName: string
   currentName: string
+  editing: boolean
+  isNew?: boolean
 }
 
 type ChangeType = 'ingredient' | 'tag'
 
-// Stato locale
 const localIngredients = ref<PendingItem[]>([])
 const localTags = ref<PendingItem[]>([])
+const ingredientRefs = new Map<string, HTMLElement>()
+const tagRefs = new Map<string, HTMLElement>()
 
-// Computed Properties
+// Computed properties
 const visibleIngredients = computed(() => {
-  const deletions = pendingChangesStore.filterChanges
-    .filter(c => c.type === 'ingredient' && c.action === 'delete')
-    .map(c => c.name)
+  const changes = pendingChangesStore.filterChanges
+  const deletions = changes.filter(c => c.type === 'ingredient' && c.action === 'delete').map(c => c.name)
+  const updates = new Map(changes
+    .filter(c => c.type === 'ingredient' && c.action === 'update')
+    .map(c => [c.name, c.newName]))
 
-  return localIngredients.value
-    .filter(i => !deletions.includes(i.originalName))
-    .concat(
-      pendingChangesStore.filterChanges
-        .filter(c => c.type === 'ingredient' && c.action === 'create')
-        .map(c => ({ originalName: c.name, currentName: c.name }))
-    )
+  return [
+    ...localIngredients.value
+      .filter(i => !deletions.includes(i.originalName))
+      .map(i => ({
+        ...i,
+        currentName: updates.get(i.originalName) || i.originalName
+      })),
+    ...changes
+      .filter(c => c.type === 'ingredient' && c.action === 'create')
+      .map(c => reactive({
+        originalName: c.name,
+        currentName: c.name,
+        editing: true,
+        isNew: true
+      }))
+  ].sort((a, b) => a.currentName.localeCompare(b.currentName))
 })
 
 const visibleTags = computed(() => {
-  const deletions = pendingChangesStore.filterChanges
+  const changes = pendingChangesStore.filterChanges
+  const deletions = changes
     .filter(c => c.type === 'tag' && c.action === 'delete')
     .map(c => c.name)
+  const updates = new Map(
+    changes
+      .filter(c => c.type === 'tag' && c.action === 'update')
+      .map(c => [c.name, c.newName])
+  )
 
-  return localTags.value
+  const existing = localTags.value
     .filter(t => !deletions.includes(t.originalName))
-    .concat(
-      pendingChangesStore.filterChanges
-        .filter(c => c.type === 'tag' && c.action === 'create')
-        .map(c => ({ originalName: c.name, currentName: c.name }))
+    .map(t => {
+      t.currentName = updates.get(t.originalName) ?? t.originalName
+      return t
+    })
+
+  const created = changes
+    .filter(c => c.type === 'tag' && c.action === 'create')
+    .map(c =>
+      reactive({
+        originalName: c.name,
+        currentName: c.name,
+        editing: true,
+        isNew: true
+      })
     )
+
+  return [...existing, ...created].sort((a, b) =>
+    a.currentName.localeCompare(b.currentName)
+  )
 })
 
-// Funzioni
-const hasPendingChange = (
-  type: ChangeType,
-  item: PendingItem
-): boolean => {
-  return pendingChangesStore.filterChanges.some(change => {
-    if (change.type !== type) return false
-
-    if (change.action === 'update') {
-      return change.name === item.originalName ||
-             change.newName === item.currentName
-    }
-
-    return change.name === item.currentName ||
-           change.name === item.originalName
-  })
-}
-
+// Lifecycle
 onMounted(async () => {
-  await productsStore.initializeStore()
+  await Promise.all([
+    productsStore.initializeProducts(),
+    filtersStore.initializeFilters()
+  ])
   initLocalState()
 })
 
 const initLocalState = () => {
-  localIngredients.value = productsStore.allIngredients.map(name => ({
-    originalName: name,
-    currentName: name
-  }))
-  localTags.value = productsStore.allTags.map(name => ({
-    originalName: name,
-    currentName: name
-  }))
+  localIngredients.value = filtersStore.allIngredients.map(name =>
+    reactive({
+      originalName: name,
+      currentName: name,
+      editing: false,
+      isNew: false
+    })
+  )
+
+  localTags.value = filtersStore.allTags.map(name =>
+    reactive({
+      originalName: name,
+      currentName: name,
+      editing: false,
+      isNew: false
+    })
+  )
 }
 
-// Le computed properties e le funzioni rimangono invariate tranne:
-const addNewIngredient = () => {
-  if (newIngredient.value.trim()) {
-    pendingChangesStore.addFilterChange({
-      type: 'ingredient',
-      action: 'create',
-      name: newIngredient.value.trim()
-    })
-    newIngredient.value = ''
-    productsStore.refreshLists() // Aggiunto refresh delle liste
+// Refs handlers
+const setIngredientRef = (item: PendingItem) => (el: Element | ComponentPublicInstance | null) => {
+  if (el) {
+    const key = `${item.originalName}-${item.isNew ? 'new' : 'existing'}`
+    ingredientRefs.set(key, el as HTMLElement)
   }
 }
 
-const addNewTag = () => {
-  if (newTag.value.trim()) {
-    pendingChangesStore.addFilterChange({
-      type: 'tag',
-      action: 'create',
-      name: newTag.value.trim()
-    })
-    newTag.value = ''
-    productsStore.refreshLists() // Aggiunto refresh delle liste
+const setTagRef = (item: PendingItem) => (el: Element | ComponentPublicInstance | null) => {
+  if (el) {
+    const key = `${item.originalName}-${item.isNew ? 'new' : 'existing'}`
+    tagRefs.set(key, el as HTMLElement)
   }
 }
 
-const updateIngredient = (oldVal: string, newVal: string) => {
-  if (newVal.trim() && newVal !== oldVal) {
+// Editing logic
+const startEditing = async (type: ChangeType, item: PendingItem) => {
+  item.editing = true
+  await nextTick()
+
+  const refKey = `${item.originalName}-${item.isNew ? 'new' : 'existing'}`
+  const targetRef = type === 'ingredient' ? ingredientRefs.get(refKey) : tagRefs.get(refKey)
+
+  if (targetRef) {
+    targetRef.focus()
+    targetRef.removeAttribute('readonly')
+  }
+}
+
+const handleBlur = (item: PendingItem, type: ChangeType) => {
+  item.editing = false
+
+  const refKey = `${item.originalName}-${item.isNew ? 'new' : 'existing'}`
+  const targetRef = type === 'ingredient'
+    ? ingredientRefs.get(refKey)
+    : tagRefs.get(refKey)
+  if (targetRef) {
+    targetRef.setAttribute('readonly', 'readonly')
+  }
+
+  const newName = item.currentName.trim()
+  if (!newName) {
+    if (item.isNew) {
+      pendingChangesStore.removeFilterChange({ type, name: item.originalName })
+    }
+    return
+  }
+
+  if (newName !== item.originalName) {
+    updateFilter(type, item.originalName, newName)
+  }
+
+  if (item.isNew) {
+    item.isNew = false
+  }
+}
+
+const handleKey = (event: KeyboardEvent, item: PendingItem, type: ChangeType) => {
+  if (event.key === 'Enter') {
+    handleBlur(item, type)
+  }
+  if (event.key === 'Escape') {
+    item.currentName = item.originalName
+
+    const refKey = `${item.originalName}-${item.isNew ? 'new' : 'existing'}`
+    const targetRef = type === 'ingredient'
+      ? ingredientRefs.get(refKey)
+      : tagRefs.get(refKey)
+    if (targetRef) {
+      targetRef.setAttribute('readonly', 'readonly')
+    }
+
+    item.editing = false
+  }
+}
+
+// CRUD operations
+const updateFilter = (type: ChangeType, oldVal: string, newVal: string) => {
+  const existingChange = pendingChangesStore.filterChanges.find(c =>
+    c.type === type && c.name === oldVal && c.action === 'update'
+  )
+
+  if (existingChange) {
+    existingChange.newName = newVal
+  } else {
     pendingChangesStore.addFilterChange({
-      type: 'ingredient',
+      type,
       action: 'update',
       name: oldVal,
-      newName: newVal.trim()
+      newName: newVal
     })
   }
 }
 
-const updateTag = (oldVal: string, newVal: string) => {
-  if (newVal.trim() && newVal !== oldVal) {
-    pendingChangesStore.addFilterChange({
-      type: 'tag',
-      action: 'update',
-      name: oldVal,
-      newName: newVal.trim()
-    })
+const addNewItem = async (type: ChangeType, value: string) => {
+  const name = value.trim()
+  if (!name) return
+
+  const exists = pendingChangesStore.filterChanges.some(
+    c => c.type === type && (c.name === name || c.newName === name)
+  )
+
+  if (!exists) {
+    pendingChangesStore.addFilterChange({ type, action: 'create', name })
+
+    if (type === 'ingredient') {
+      newIngredient.value = ''
+      await nextTick()
+      const ref = ingredientRefs.get(`${name}-new`)
+      ref?.focus()
+    } else {
+      newTag.value = ''
+      await nextTick()
+      const ref = tagRefs.get(`${name}-new`)
+      ref?.focus()
+    }
   }
 }
 
-const deleteIngredient = (name: string) => {
-  pendingChangesStore.addFilterChange({
-    type: 'ingredient',
-    action: 'delete',
-    name: name
-  })
+const resetFilter = (type: ChangeType, item: PendingItem) => {
+  pendingChangesStore.filterChanges
+    .filter(c => c.type === type && (c.name === item.originalName || c.newName === item.currentName))
+    .forEach(c => pendingChangesStore.removeFilterChange({ type, name: c.name }))
+
+  item.currentName = item.originalName
 }
 
-const deleteTag = (name: string) => {
-  pendingChangesStore.addFilterChange({
-    type: 'tag',
-    action: 'delete',
-    name: name
-  })
-}
-
-const toggleSidebar = () => {
-  isSidebarOpen.value = !isSidebarOpen.value
-}
-
-const handleOutsideClick = (event: Event) => {
-  if (filtriContainer.value && !filtriContainer.value.contains(event.target as Node)) {
-    isSidebarOpen.value = false
-  }
-}
+// Helpers
+const hasPendingChange = (type: ChangeType, item: PendingItem) =>
+  pendingChangesStore.filterChanges.some(change =>
+    change.type === type && (
+      change.action === 'update'
+        ? change.name === item.originalName
+        : change.name === item.currentName
+    )
+  )
 </script>
 
+<template>
+  <div class="filters-content">
+    <!-- Ingredients Section -->
+    <div class="filter-section">
+      <div class="section-header">
+        <h4 class="subtitle">Ingredienti</h4>
+      </div>
+      <div class="inline-list">
+        <div v-for="ingredient in visibleIngredients" :key="ingredient.originalName" class="inline-item"
+          :class="{ 'not-used': !usedIngredients.includes(ingredient.originalName) }">
+          <div class="editable-wrapper">
+            <input type="text" v-model="ingredient.currentName" :readonly="!ingredient.editing && !ingredient.isNew"
+              @blur="handleBlur(ingredient, 'ingredient')" @keydown.enter="handleKey($event, ingredient, 'ingredient')"
+              @keydown.esc="handleKey($event, ingredient, 'ingredient')" class="compact-input"
+              :ref="setIngredientRef(ingredient)"
+              :key="`${ingredient.originalName}-${ingredient.isNew ? 'new' : 'existing'}`" />
+            <button v-if="!ingredient.editing" @click="startEditing('ingredient', ingredient)" class="edit-btn">
+              <IconEdit />
+            </button>
+            <button v-if="hasPendingChange('ingredient', ingredient)" @click="resetFilter('ingredient', ingredient)"
+              class="reset-btn">↺</button>
+            <div v-if="hasPendingChange('ingredient', ingredient)" class="pending-dot"></div>
+          </div>
+        </div>
+        <div class="add-input compact">
+          <input v-model="newIngredient" placeholder="Nuovo..."
+            @keyup.enter="addNewItem('ingredient', newIngredient)" />
+          <button @click="addNewItem('ingredient', newIngredient)">+</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tags Section (stessa struttura ingredients) -->
+    <div class="filter-section">
+      <div class="section-header">
+        <h4 class="subtitle">Tag</h4>
+      </div>
+      <div class="inline-list">
+        <div v-for="tag in visibleTags" :key="tag.originalName" class="inline-item"
+          :class="{ 'not-used': !usedTags.includes(tag.originalName) }">
+          <div class="editable-wrapper">
+            <input type="text" v-model="tag.currentName" :readonly="!tag.editing && !tag.isNew" @blur="handleBlur(tag, 'tag')"
+              @keydown.enter="handleKey($event, tag, 'tag')" @keydown.esc="handleKey($event, tag, 'tag')"
+              class="compact-input" :ref="setTagRef(tag)"
+              :key="`${tag.originalName}-${tag.isNew ? 'new' : 'existing'}`" />
+            <button v-if="!tag.editing" @click="startEditing('tag', tag)" class="edit-btn">
+              <IconEdit />
+            </button>
+            <button v-if="hasPendingChange('tag', tag)" @click="resetFilter('tag', tag)" class="reset-btn">↺</button>
+            <div v-if="hasPendingChange('tag', tag)" class="pending-dot"></div>
+          </div>
+        </div>
+        <div class="add-input compact">
+          <input v-model="newTag" placeholder="Nuovo..." @keyup.enter="addNewItem('tag', newTag)" />
+          <button @click="addNewItem('tag', newTag)">+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
 <style scoped>
-.filtri-btn {
-  position: fixed;
-  top: 205px;
-  left: -16px;
-  background-color: var(--poldo-primary);
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  cursor: pointer;
-  border-radius: 0px 0px 10px 10px;
-  font-size: 16px;
-  transition: transform 0.3s ease;
-  transform: translateX(0) rotate(-90deg);
-  z-index: 999;
-}
-
-.sidebar {
-  position: fixed;
-  top: 105px;
-  left: 0;
-  width: 260px;
-  height: calc(95% - 110px);
-  background: var(--color-background-soft);
-  box-shadow: 5px 0 5px var(--poldo-card-shadow);
-  z-index: 1000;
-  transform: translateX(-100%);
-  transition: transform 0.3s ease;
-  border-radius: 0 20px 20px 0;
-  overflow: hidden;
-}
-
-.sidebar.open {
-  transform: translateX(0);
-}
-
-.sidebar-content {
-  height: 100%;
-  overflow-y: auto;
-  padding: 1rem;
-}
-
-.close-btn {
-  background-color: var(--poldo-primary);
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  color: var(--poldo-text);
-  font-size: 20px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
+/* Stili invariati */
 .subtitle {
   color: var(--poldo-primary);
   font-size: 1.1rem;
@@ -318,24 +330,30 @@ const handleOutsideClick = (event: Event) => {
 }
 
 .filter-section {
-  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 20px;
 }
 
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
+.filters-content {
+  height: 100%;
+  max-width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--color-background-soft);
+  border-radius: 12px;
+  padding: 20px;
 }
 
 .inline-list {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
   padding: 8px 0;
 }
 
 .inline-item {
+  position: relative;
+  padding-right: 60px;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -343,14 +361,25 @@ const handleOutsideClick = (event: Event) => {
   border-radius: 20px;
   padding: 4px 8px;
   border: 1px solid var(--color-border);
+  min-width: 200px;
+  max-width: 100%;
+}
+
+.inline-item.not-used {
+  opacity: 0.7;
+  background-color: var(--color-background-mute);
 }
 
 .editable-wrapper {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .compact-input {
-  width: 120px;
+  width: 100%;
+  max-width: 160px;
   padding: 4px 8px;
   border: none;
   background: transparent;
@@ -359,10 +388,10 @@ const handleOutsideClick = (event: Event) => {
 
 .pending-dot {
   position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 8px;
-  height: 8px;
+  top: -5px;
+  left: -5px;
+  width: 10px;
+  height: 10px;
   background-color: #2196F3;
   border-radius: 50%;
 }
@@ -378,38 +407,45 @@ const handleOutsideClick = (event: Event) => {
   padding: 4px 8px;
   border: 1px solid var(--color-border);
   border-radius: 20px;
-  font-size: 0.9rem;
 }
 
 .add-input.compact button {
   padding: 0 12px;
   background: var(--poldo-green);
   color: white;
-  border: none;
   border-radius: 20px;
-  cursor: pointer;
 }
 
-.delete-btn {
-  background: none;
+.edit-btn {
+  background: transparent;
   border: none;
-  color: var(--poldo-red);
+  color: var(--poldo-text);
+  padding: 2px;
   cursor: pointer;
-  padding: 0 4px;
-  font-size: 16px;
-  line-height: 1;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
-/* Scrollbar styling */
-.sidebar-content::-webkit-scrollbar {
+.reset-btn {
+  background: transparent;
+  border: none;
+  position: absolute;
+  right: -20px;
+  top: 52%;
+  transform: translateY(-50%);
+  color: var(--poldo-primary);
+  font-size: 1.25rem;
+  padding: 0;
+  cursor: pointer;
+}
+
+.filters-content::-webkit-scrollbar {
   width: 6px;
 }
 
-.sidebar-content::-webkit-scrollbar-track {
-  background: var(--color-background-soft);
-}
-
-.sidebar-content::-webkit-scrollbar-thumb {
+.filters-content::-webkit-scrollbar-thumb {
   background: var(--poldo-primary);
   border-radius: 4px;
 }

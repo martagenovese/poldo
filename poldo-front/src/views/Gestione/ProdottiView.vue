@@ -1,38 +1,46 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { useProductsStore } from '@/stores/products'
 import { useRouter } from 'vue-router'
-import { usePendingChangesStore } from '@/stores/pendingChanges'
+import { useGestioneProductsStore } from '@/stores/Gestione/products'
+import { useFiltersStore } from '@/stores/Gestione/filters'
+import { usePendingChangesStore } from '@/stores/Gestione/pendingChanges'
+
 import CardGrid from '@/components/CardGrid.vue'
 import CardProdotto from '@/components/Gestione/CardProdotto.vue'
 import Filtri from '@/components/Gestione/Filtri.vue'
 import SearchBar from '@/components/SearchBar.vue'
 
 const router = useRouter()
-const productsStore = useProductsStore()
+const productsStore = useGestioneProductsStore()
+const filtersStore = useFiltersStore()
 const pendingChangesStore = usePendingChangesStore()
 const searchQuery = ref('')
 
-console.log('Prodotti nello store:', productsStore.products)
-console.log('Ingredienti:', productsStore.allIngredients)
-console.log('Tags:', productsStore.allTags)
-
+// Computed properties
 const hasPendingChanges = computed(() =>
-  (Object.keys(pendingChangesStore.productChanges).length > 0) ||
-  (pendingChangesStore.filterChanges.length > 0)
+  Object.keys(pendingChangesStore.productChanges).length > 0 ||
+  pendingChangesStore.filterChanges.length > 0
 )
 
+const usedIngredients = computed(() => {
+  const ingredients = new Set<string>()
+  filteredProducts.value.forEach(p => p.ingredients.forEach(i => ingredients.add(i)))
+  return Array.from(ingredients)
+})
+
+const usedTags = computed(() => {
+  const tags = new Set<string>()
+  filteredProducts.value.forEach(p => p.tags.forEach(t => tags.add(t)))
+  return Array.from(tags)
+})
+
+// Filters handling
 const activeFilters = ref({
   ingredienti: [] as string[],
   tags: [] as string[],
   attivo: null as boolean | null,
   prezzo: { min: 0, max: Infinity }
 })
-
-const maxPrice = computed(() => Math.max(
-  ...productsStore.products.map(p => p.price),
-  0
-))
 
 const handleFiltersApplied = (filters: any) => {
   activeFilters.value = {
@@ -46,19 +54,17 @@ const handleFiltersApplied = (filters: any) => {
   }
 }
 
-const filteredProducts = computed(() => {
-  return productsStore.products.filter(product => {
-    const matchesPrice = product.price <= activeFilters.value.prezzo.max
-    const matchesIngredients = activeFilters.value.ingredienti.length === 0 ||
-      activeFilters.value.ingredienti.every(ing => product.ingredients.includes(ing))
-    const matchesTags = activeFilters.value.tags.length === 0 ||
-      activeFilters.value.tags.some(tag => product.tags.includes(tag))
-    const matchesStatus = activeFilters.value.attivo === null ||
-      product.isActive === (activeFilters.value.attivo === true)
-
-    return matchesPrice && matchesIngredients && matchesTags && matchesStatus
-  })
-})
+// Products filtering
+const filteredProducts = computed(() => productsStore.products.filter(product => {
+  return (
+    product.price <= activeFilters.value.prezzo.max &&
+    (activeFilters.value.ingredienti.length === 0 ||
+      activeFilters.value.ingredienti.every(ing => product.ingredients.includes(ing))) &&
+    (activeFilters.value.tags.length === 0 ||
+      activeFilters.value.tags.some(tag => product.tags.includes(tag))) &&
+    (activeFilters.value.attivo === null || product.isActive === activeFilters.value.attivo)
+  )
+}))
 
 const searchResults = computed(() => {
   const q = searchQuery.value.toLowerCase()
@@ -68,63 +74,78 @@ const searchResults = computed(() => {
   )
 })
 
-// Mobile layout
+// Responsive layout
 const isMobile = ref(window.innerWidth <= 768)
 const selectedMacro = ref<'cibo' | 'bibite'>('cibo')
 
-const macroFilteredProducts = computed(() => {
-  return searchResults.value.filter(prod =>
-    selectedMacro.value === 'bibite'
-      ? prod.tags.includes('Bevanda')
-      : !prod.tags.includes('Bevanda')
+const macroFilteredProducts = computed(() =>
+  searchResults.value.filter(prod =>
+    selectedMacro.value === 'bibite' ?
+      prod.tags.includes('Bevanda') :
+      !prod.tags.includes('Bevanda')
   )
-})
+)
 
-// Desktop layout
 const groupedByMacro = computed(() => {
-  const groups: Record<string, typeof searchResults.value> = {
-    'Cibo': [],
-    'Bibite': []
-  }
-
-  searchResults.value.forEach(product => {
-    product.tags.includes('Bevanda')
-      ? groups['Bibite'].push(product)
-      : groups['Cibo'].push(product)
-  })
-
+  const groups = { 'Cibo': [], 'Bibite': [] } as Record<string, typeof searchResults.value>
+  searchResults.value.forEach(product =>
+    product.tags.includes('Bevanda') ?
+      groups['Bibite'].push(product) :
+      groups['Cibo'].push(product)
+  )
   return groups
 })
 
+// Save changes
 const saveAllChanges = async () => {
   try {
-    // Modifica per productChanges
-    const productChanges = Object.entries(pendingChangesStore.productChanges)
-    for (const [id, data] of productChanges) {
-      await productsStore.updateProduct(Number(id), data)
+    // Salvataggio modifiche prodotti
+    for (const [id, data] of Object.entries(pendingChangesStore.productChanges)) {
+      await productsStore.updateProduct(Number(id), data);
     }
 
-    // Aggiungi qui la logica per i filterChanges se necessaria
-    // (es. sincronizzazione con il backend per ingredienti/tag)
+    // Salvataggio modifiche filtri
+    for (const change of pendingChangesStore.filterChanges) {
+      switch (change.type) {
+        case 'ingredient':
+          if (change.action === 'create') await filtersStore.addIngredient(change.name);
+          if (change.action === 'update') await filtersStore.updateIngredient(change.name, change.newName!);
+          break;
+        case 'tag':
+          if (change.action === 'create') await filtersStore.addTag(change.name);
+          if (change.action === 'update') await filtersStore.updateTag(change.name, change.newName!);
+          break;
+      }
+    }
 
-    pendingChangesStore.clearAllChanges()
+    //window.location.reload();
+
   } catch (error) {
-    console.error('Errore nel salvataggio:', error)
-    alert("Errore durante il salvataggio delle modifiche")
-  }
-}
+    console.error('Errore durante il salvataggio:', error);
+    alert(`Errore durante il salvataggio: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
 
+    await Promise.all([
+      productsStore.initializeProducts(),
+      filtersStore.initializeFilters()
+    ]);
+  } finally {
+    pendingChangesStore.clearAllChanges();
+  }
+};
+
+// Responsive handling
 const onResize = () => isMobile.value = window.innerWidth <= 768
 onMounted(() => window.addEventListener('resize', onResize))
 onUnmounted(() => window.removeEventListener('resize', onResize))
 </script>
 
 <template>
-  <div class="prodotti">
+  <div class="prodotti-view">
     <button class="global-save-btn" :class="{ disabled: !hasPendingChanges }" :disabled="!hasPendingChanges"
       @click="saveAllChanges">
       SALVA TUTTE LE MODIFICHE
     </button>
+
     <div class="search-bar-wrapper">
       <SearchBar v-model="searchQuery" placeholder="Cerca prodotti..." />
 
@@ -148,34 +169,36 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
       </div>
     </div>
 
-    <div class="prodotti-container">
-      <div v-if="searchResults.length === 0" class="no-results">
-        {{ searchQuery ? `Nessun risultato per "${searchQuery}"` : 'Nessun prodotto trovato' }}
-      </div>
+    <div class="main-layout">
+      <Filtri :ingredients="filtersStore.allIngredients" :tags="filtersStore.allTags"
+        :used-ingredients="usedIngredients" :used-tags="usedTags" @filters-applied="handleFiltersApplied" />
 
-      <!-- Mobile view -->
-      <CardGrid v-if="isMobile" :minWidth="'300px'">
-        <CardProdotto v-for="product in macroFilteredProducts" :key="product.id" v-bind="product" :editable="true" />
-      </CardGrid>
-
-      <!-- Desktop view -->
-      <template v-else>
-        <div v-for="(products, macro) in groupedByMacro" :key="macro">
-          <h2 v-if="products.length > 0" class="macro-title">{{ macro }}</h2>
-          <CardGrid :minWidth="'280px'">
-            <CardProdotto v-for="product in products" :key="product.id" v-bind="product" :editable="true" />
-          </CardGrid>
+      <div class="prodotti-container">
+        <div v-if="searchResults.length === 0" class="no-results">
+          {{ searchQuery ? `Nessun risultato per "${searchQuery}"` : 'Nessun prodotto trovato' }}
         </div>
-      </template>
+
+        <!-- Mobile view -->
+        <CardGrid v-if="isMobile" :minWidth="'300px'">
+          <CardProdotto v-for="product in macroFilteredProducts" :product-id="product.id" v-bind="product"
+            :editable="true" />
+        </CardGrid>
+
+        <!-- Desktop view -->
+        <template v-else>
+          <div v-for="(products, macro) in groupedByMacro" :key="macro">
+            <h2 v-if="products.length > 0" class="macro-title">{{ macro }}</h2>
+            <CardGrid :minWidth="'280px'">
+              <CardProdotto v-for="product in products" :product-id="product.id" v-bind="product" :editable="true" />
+            </CardGrid>
+          </div>
+        </template>
+      </div>
     </div>
 
-    <Filtri :ingredients="productsStore.allIngredients" :tags="productsStore.allTags" :max-price="maxPrice"
-      @filters-applied="handleFiltersApplied" :showAll="true" />
-
     <button class="add-button" :class="{ disabled: hasPendingChanges }" :disabled="hasPendingChanges"
-      @click="router.push('/add-product')">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      @click="router.push('addProdotto')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
         <path d="M12 2v20M2 12h20" />
       </svg>
     </button>
@@ -183,10 +206,53 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
 </template>
 
 <style scoped>
+.prodotti-view {
+  position: relative;
+  height: calc(100vh - 100px);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.main-layout {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  height: calc(100% - 60px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.filters-panel {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--color-background-soft);
+  border-radius: 12px;
+  padding: 20px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.prodotti-container {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding-right: 10px;
+  height: 100%;
+}
+
+.search-bar-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 0 10px;
+}
+
 .category-switch {
   display: flex;
   justify-content: center;
-  margin: 15px 0;
 }
 
 .switch-container {
@@ -231,60 +297,11 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
   transition: stroke 0.3s ease;
 }
 
-.switch-btn span {
-  font-weight: 500;
-  color: var(--poldo-text);
-  transition: color 0.3s ease;
-}
-
-.search-bar-wrapper {
-  padding: 20px;
-  width: 100%;
-  top: 0;
-}
-
-.macro-selector {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 15px 0;
-  gap: 10px;
-}
-
-.macro-selector select {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 2px solid var(--poldo-primary);
-  background: var(--color-background);
-  color: var(--poldo-text);
-  font-size: 1rem;
-}
-
 .no-results {
   text-align: center;
   padding: 2rem;
   color: var(--poldo-text);
   font-size: 1.2rem;
-  width: 100%;
-}
-
-.prodotti {
-  position: relative;
-  height: calc(100vh - 100px);
-  padding-bottom: 45px;
-  display: flex;
-  flex-direction: column;
-  margin-left: 20px;
-}
-
-.prodotti-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 20px 20px;
-}
-
-.macro-section {
-  margin-bottom: 40px;
 }
 
 .macro-title {
@@ -295,54 +312,22 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
   border-bottom: 3px solid var(--poldo-accent);
 }
 
-.products-grid {
-  padding: 0 15px;
-  gap: 25px;
-}
-
-.add-button {
-  position: fixed;
-  bottom: 5px;
-  right: 30px;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  border: none;
-  background: var(--poldo-primary);
-  color: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transition: all 0.3s ease;
-  z-index: 999;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.add-button.disabled {
-  background-color: var(--disabled);
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 .global-save-btn {
   position: fixed;
   bottom: 15px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 10px 20px;
-  font-size: 0.9rem;
+  padding: 12px 25px;
+  font-size: 0.95rem;
   background-color: var(--poldo-primary);
   color: white;
   border: none;
-  border-radius: 20px;
-  font-weight: bold;
+  border-radius: 25px;
+  font-weight: 600;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   z-index: 999;
   transition: all 0.3s ease;
-  min-width: 200px;
-  text-align: center;
 }
 
 .global-save-btn.disabled {
@@ -351,37 +336,68 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
   opacity: 0.7;
 }
 
+.add-button {
+  position: fixed;
+  bottom: 20px;
+  right: 30px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: none;
+  background: var(--poldo-primary);
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+  z-index: 5;
+}
+
+.add-button:not(.disabled):hover {
+  transform: scale(1.1);
+}
+
+.add-button.disabled {
+  background-color: var(--disabled);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 @media (max-width: 768px) {
+  .main-layout {
+    flex-direction: column;
+  }
+
+  .filters-panel {
+    width: 100%;
+    height: auto;
+    max-height: 400px;
+  }
+
   .prodotti-container {
-    padding: 0 10px 20px;
+    padding-right: 0;
   }
 
-  .products-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 15px;
-  }
-}
-
-@media (min-width: 769px) {
-  .products-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    max-width: 1400px;
-    margin: 0 auto;
-  }
-
-  .macro-title {
-    font-size: 2rem;
-    margin-left: 2rem;
-  }
-}
-
-@media (max-width: 480px) {
   .switch-btn {
     padding: 8px 15px;
   }
 
   .switch-btn span {
     display: none;
+  }
+
+  .global-save-btn {
+    bottom: 70px;
+    min-width: 85%;
+  }
+}
+
+@media (min-width: 769px) {
+  .macro-title {
+    font-size: 2rem;
+    margin-left: 1rem;
   }
 }
 </style>

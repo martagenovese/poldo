@@ -18,14 +18,8 @@
           <div class="price-inputs">
             <div class="price-row">
               <label for="max-price">Max:</label>
-              <input
-                id="max-price"
-                type="number"
-                v-model.number="priceRange.max"
-                :min="0"
-                :max="maxPrice"
-                @input="validatePriceRange"
-              />
+              <input id="max-price" type="number" v-model.number="priceRange.max" :min="0" :max="maxPrice"
+                @input="validatePriceRange" />
             </div>
           </div>
         </div>
@@ -33,17 +27,8 @@
         <div class="filter-section">
           <h4>Ingredienti</h4>
           <div class="checkbox-group">
-            <div
-              v-for="ingredient in ingredients"
-              :key="ingredient"
-              class="item-row"
-            >
-              <input
-                type="checkbox"
-                :id="`ing-${ingredient}`"
-                :value="ingredient"
-                v-model="selections.ingredienti"
-              />
+            <div v-for="ingredient in ingredients" :key="ingredient" class="item-row">
+              <input type="checkbox" :id="`ing-${ingredient}`" :value="ingredient" v-model="selections.ingredienti" />
               <label :for="`ing-${ingredient}`">{{ ingredient }}</label>
             </div>
           </div>
@@ -52,17 +37,8 @@
         <div class="filter-section">
           <h4>Tag</h4>
           <div class="checkbox-group">
-            <div
-              v-for="tag in tags"
-              :key="tag"
-              class="item-row"
-            >
-              <input
-                type="checkbox"
-                :id="`tag-${tag}`"
-                :value="tag"
-                v-model="selections.tags"
-              />
+            <div v-for="tag in tags" :key="tag" class="item-row">
+              <input type="checkbox" :id="`tag-${tag}`" :value="tag" v-model="selections.tags" />
               <label :for="`tag-${tag}`">{{ tag }}</label>
             </div>
           </div>
@@ -72,30 +48,15 @@
           <h4>Stato</h4>
           <div class="radio-group">
             <div class="item-row">
-              <input
-                type="radio"
-                id="attivo-tutti"
-                :value="null"
-                v-model="selections.attivo"
-              />
+              <input type="radio" id="attivo-tutti" :value="null" v-model="selections.attivo" />
               <label for="attivo-tutti">Tutti</label>
             </div>
             <div class="item-row">
-              <input
-                type="radio"
-                id="attivo-si"
-                :value="true"
-                v-model="selections.attivo"
-              />
+              <input type="radio" id="attivo-si" :value="true" v-model="selections.attivo" />
               <label for="attivo-si">Attivo</label>
             </div>
             <div class="item-row">
-              <input
-                type="radio"
-                id="attivo-no"
-                :value="false"
-                v-model="selections.attivo"
-              />
+              <input type="radio" id="attivo-no" :value="false" v-model="selections.attivo" />
               <label for="attivo-no">Non Attivo</label>
             </div>
           </div>

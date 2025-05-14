@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import type { PiniaPluginContext } from 'pinia'
+import { ref, computed } from 'vue'
 
 export interface Product {
   id: number
@@ -9,171 +8,148 @@ export interface Product {
   ingredients: string[]
   imageSrc: string
   price: number
+  quantity: number
+  disponibility: number
   tags: string[]
   isActive: boolean
 }
 
-
 const API_CONFIG = {
-    BASE_URL: '/api',
-    TOKEN: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NDksInJ1b2xvIjoic3R1ZGVudGUiLCJpYXQiOjE3NDQzMDc3NjksImV4cCI6MTc3NTg2NTM2OX0.mdqnDVZpEotkEEXMaCj9f-rfYBx_b4WeJr97g3L6MP8",
-    DEFAULT_IMAGE: "https://lh3.googleusercontent.com/a/ACg8ocLPv09a9-uNbEG-ZfRm5bWQUlyLOpBaKxHz88de_c6vB8RvQ_Plrg=s96-c"
-  }
-
-  const headers = new Headers({
-    Authorization: `Bearer ${API_CONFIG.TOKEN}`,
-    Accept: 'application/json',
-    'Content-Type': 'application/json'
-  })
-
-const fetchProducts = async (): Promise<Product[]> => {
-
-
-  const response = await fetch('http://figliolo.it:5005/v1/prodotti', { headers })
-  if (!response.ok) throw new Error('Network response was not ok')
-
-  const data = await response.json()
-  return data.map((item: any) => ({
-    id: item.idProdotto,
-    title: item.nome,
-    description: item.descrizione,
-    ingredients: item.ingredienti,
-    imageSrc: item.img || API_CONFIG.DEFAULT_IMAGE,
-    price: parseFloat(item.prezzo),
-    tags: item.tags,
-    isActive: item.attivo === 1
-  }))
+  BASE_URL: 'http://localhost:5000/v1',
+  TOKEN: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZEdlc3Rpb25lIjoxLCJydW9sbyI6Imdlc3RvcmUiLCJpZCI6MTksImlhdCI6MTc0NDMwNzg0MiwiZXhwIjoxNzc1ODY1NDQyfQ.HMNTe1h81A80p-BawzVj44zSBGBVMYZRdp_vDxE2j9k',
+  DEFAULT_IMAGE: 'http://localhost:5000/v1/prodotti/image/-1'
 }
 
+const headers = new Headers({
+  Authorization: `Bearer ${API_CONFIG.TOKEN}`,
+  Accept: 'application/json',
+  'Content-Type': 'application/json'
+})
 
-const handleRequest = async <T>(endpoint: string, errorMsg: string, init?: RequestInit): Promise<T> => {
-    try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}/${endpoint}`, {
-        ...init,
-        headers,
-        mode: 'cors'
-      })
-  
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`${errorMsg}: ${response.status} - ${errorText}`)
-      }
-  
-      return await response.json()
-    } catch (error) {
-      console.error('API Error:', error)
-      throw new Error(errorMsg)
+async function handleRequest<T>(
+  endpoint: string,
+  errorMsg: string,
+  init?: RequestInit
+): Promise<T> {
+  const url = `${API_CONFIG.BASE_URL}/${endpoint}`;
+  try {
+    const response = await fetch(url, { headers, ...init, mode: 'cors' });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`${errorMsg}: ${response.status} — ${errorText}`);
     }
+
+    const contentType = response.headers.get('content-type');
+    if (contentType?.includes('application/json')) {
+      return await response.json();
+    }
+    return {} as T;
+
+  } catch (error: any) {
+    console.error('Request failed:', error);
+    throw new Error(`${errorMsg}: ${error.message}`);
   }
+}
 
 export const useProductsStore = defineStore('products', () => {
   const products = ref<Product[]>([])
-  const allIngredients = ref<string[]>([])
-  const allTags = ref<string[]>([])
+  const defaultImageBlobUrl = ref<string>('')
 
-  // Azioni principali
-  const initializeStore = async () => {
+  const allIngredients = computed(() => {
+    const ingredients = new Set<string>()
+    products.value.forEach(product => {
+      product.ingredients.forEach(ing => ingredients.add(ing))
+    })
+    return Array.from(ingredients)
+  })
+
+  const allTags = computed(() => {
+    const tags = new Set<string>()
+    products.value.forEach(product => {
+      product.tags.forEach(tag => tags.add(tag))
+    })
+    return Array.from(tags)
+  })
+
+  async function fetchDefaultImage() {
     try {
-      const fetchedProducts = await fetchProducts()
-      products.value = fetchedProducts
-
-      // Aggiorna gli ingredienti
-      allIngredients.value = Array.from(
-        new Set(fetchedProducts.flatMap(p => p.ingredients))
-      )
-
-      // Aggiorna i tags
-      allTags.value = Array.from(
-        new Set(fetchedProducts.flatMap(p => p.tags))
-      )
-    } catch (error) {
-        console.error('Failed to initialize products store:', error)
-        // Gestisci l'errore come preferisci
-    }
-}
-
-  // Chiamata automatica all'inizializzazione
-  initializeStore().catch(error =>
-    console.error('Auto-initialization error:', error)
-  )
-
-  const refreshLists = async () => {
-    try {
-      const [ingredients, tags] = await Promise.all([
-        handleRequest<string[]>('ingredienti', 'Failed to refresh ingredients'),
-        handleRequest<string[]>('tags', 'Failed to refresh tags')
-      ])
-
-      allIngredients.value = ingredients
-      allTags.value = tags
-    } catch (error) {
-      console.error('Failed to refresh lists:', error)
-      throw error
-    }
-  }
-
-  // CRUD Operations
-  const addProduct = async (newProduct: Omit<Product, 'id'>) => {
-    try {
-      const data = await handleRequest<{ idProdotto: number }>('prodotti', 'Failed to add product', {
-        method: 'POST',
-        body: JSON.stringify({
-          nome: newProduct.title,
-          descrizione: newProduct.description,
-          ingredienti: newProduct.ingredients,
-          img: newProduct.imageSrc,
-          prezzo: newProduct.price.toFixed(2),
-          tags: newProduct.tags,
-          attivo: newProduct.isActive ? 1 : 0
+      const response = await fetch(API_CONFIG.DEFAULT_IMAGE, {
+        headers: new Headers({
+          Authorization: `Bearer ${API_CONFIG.TOKEN}`
         })
       })
 
-      products.value.push({ ...newProduct, id: data.idProdotto })
-      await refreshLists()
-    } catch (error) {
-      console.error('Product creation failed:', error)
-      throw error
-    }
-  }
-
-  const updateProduct = async (id: number, updates: Partial<Product>) => {
-    try {
-      await handleRequest(`prodotti/${id}`, 'Failed to update product', {
-        method: 'PUT',
-        body: JSON.stringify(updates)
-      })
-
-      const index = products.value.findIndex(p => p.id === id)
-      if (index !== -1) {
-        products.value[index] = { ...products.value[index], ...updates }
+      if (!response.ok) {
+        throw new Error(`Failed to fetch default image: ${response.status}`)
       }
+
+      const blob = await response.blob()
+      defaultImageBlobUrl.value = URL.createObjectURL(blob)
     } catch (error) {
-      console.error(`Product update failed for ID ${id}:`, error)
-      throw error
+      console.error('Error fetching default image:', error)
+      defaultImageBlobUrl.value = API_CONFIG.DEFAULT_IMAGE
     }
   }
+
+   const initializeProducts = async () => {
+    try {
+      await fetchDefaultImage()
+
+      const raw = await handleRequest<any[]>(
+        'prodotti',
+        'Errore fetch prodotti'
+      )
+
+      products.value = await Promise.all(raw.map(async (item) => {
+        const productImageUrl = `${API_CONFIG.BASE_URL}/prodotti/image/${item.idProdotto}`
+        const imageExists = await checkImageExists(productImageUrl)
+
+        return {
+          id: item.idProdotto,
+          title: item.nome,
+          description: item.descrizione,
+          ingredients: item.ingredienti,
+          imageSrc: imageExists ? productImageUrl : defaultImageBlobUrl.value,
+          price: parseFloat(item.prezzo),
+          quantity: item.quantita,
+          disponibility: item.disponibilita,
+          tags: item.tags,
+          isActive: item.attivo === 1
+        }
+      }))
+    } catch (err) {
+      console.error(err)
+      throw err
+    }
+  }
+
+  async function checkImageExists(url: string): Promise<boolean> {
+    try {
+      const response = await fetch(url, {
+        headers: new Headers({
+          Authorization: `Bearer ${API_CONFIG.TOKEN}`
+        })
+      })
+      return response.ok
+    } catch {
+      return false
+    }
+  }
+
+  initializeProducts().catch(error =>
+    console.error('Auto-initialization error:', error)
+  )
 
   const getProductById = (id: number) => {
     return products.value.find(product => product.id === id)
   }
 
-
- 
-
-
   return {
     products,
     allIngredients,
     allTags,
-    initializeStore,
-    addProduct,
-    getProductById,
-    updateProduct,
-    refreshLists,
-  }
-}, {
-  persist: {
-    key: 'productsStore',
-    storage: localStorage,
+    initializeProducts,
+    getProductById
   }
 })
