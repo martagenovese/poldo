@@ -60,7 +60,7 @@ router.get('/google/callback', passport.authenticate('google', { failureRedirect
     
     //TODO: cambiare
     //res.status(200).json({token: token});
-    res.redirect(`localhost:5173/callback#token=${token}`);
+    res.redirect(`http://localhost:5173/callback#token=${token}`);
 });
 
 router.post('/login', async (req, res) => {
