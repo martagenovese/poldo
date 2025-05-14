@@ -7,9 +7,13 @@ const props = defineProps({
         type: Number,
         required: true
     },
+    disabled: {
+        type: Boolean,
+        default: false
+    },
     delete: {
         type: Boolean,
-        default: true
+        default: true 
     }
 })
 
@@ -21,6 +25,7 @@ const currentQuantity = computed(() => {
 })
 
 const handleQuantityChange = (delta: number) => {
+    if (props.disabled) return 
     const newQuantity = currentQuantity.value + delta
 
     if (newQuantity <= 0) {
@@ -31,12 +36,13 @@ const handleQuantityChange = (delta: number) => {
 }
 
 const removeItem = () => {
+    if (props.disabled) return 
     cartStore.removeFromCart(props.productId)
 }
 </script>
 
 <template>
-    <div class="quantity-controls">
+    <div :class="disabled===true ? 'quantity-controls disabled' : 'quantity-controls'">
         <button v-if="delete" class="quantity-btn delete" @click.stop="removeItem">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -62,6 +68,10 @@ const removeItem = () => {
     align-items: center;
     gap: 8px;
     z-index: 2;
+}
+
+.disabled {
+    display: none;
 }
 
 .quantity-btn {
@@ -101,5 +111,26 @@ const removeItem = () => {
 
 .quantity-btn.delete:hover {
     background-color: var(--poldo-primary);
+}
+
+.quantity-btn:disabled,
+.quantity-btn.disabled {
+    background-color: var(--color-background-mute) !important;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.quantity-btn:disabled:hover,
+.quantity-btn.disabled:hover {
+    filter: none;
+    transform: none;
+}
+
+.quantity-btn.minus.disabled {
+    background-color: var(--color-background-mute) !important;
+}
+
+.quantity-btn.plus.disabled {
+    background-color: var(--color-background-mute) !important;
 }
 </style>

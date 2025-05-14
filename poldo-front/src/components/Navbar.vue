@@ -11,13 +11,14 @@ const turnoStore = useTurnoStore()
 
 defineProps<{
     img_profilo: string
-    nome: string
 }>()
 
 const pageTitles = {
     home: 'Home',
     prodotti: 'Prodotti',
     carrello: 'Carrello',
+    ordinazioni: 'Ordinazioni',
+    ordinazioniProf: 'Ordinazioni Professori',
     utenti: 'Utenti'
 } as const
 
@@ -25,7 +26,9 @@ const navRoutes = [
     { name: 'Home', path: '/', requiresTurno: false },
     { name: 'Prodotti', path: '/prodotti', requiresTurno: true },
     { name: 'Carrello', path: '/carrello', requiresTurno: true },
-    { name: 'Utenti', path: '/utenti', requiresTurno: false }
+    { name: 'Utenti', path: '/utenti', requiresTurno: false },
+    { name: 'Ordinazioni', path: '/gestione/ordinazioni', requiresTurno: false },
+    { name: 'Ordinazioni Professori', path: '/gestione/ordinazioni/prof', requiresTurno: false }
 ] as const
 
 const toggleMenu = () => showMenu.value = !showMenu.value
@@ -35,8 +38,13 @@ const pageTitle = computed(() =>
 )
 
 const hasSelectedTurno = computed(() =>
-    !!turnoStore.turnoSelezionato
+    turnoStore.turnoSelezionato !== -1
 )
+
+const nomeTurno = computed(() => {
+    const turno = turnoStore.turni.find(turno => turno.n === turnoStore.turnoSelezionato)
+    return turno !== undefined ? turno.nome : 'Turno non selezionato'
+})
 
 const navigate = (path: string, requiresTurno: boolean) => {
     if (requiresTurno && !hasSelectedTurno.value) {
@@ -57,10 +65,9 @@ const navigate = (path: string, requiresTurno: boolean) => {
             <div class="title-container">
                 <div class="main-title">Poldo {{ pageTitle }}</div>
                 <div
-                    v-if="turnoStore.turnoSelezionato && route.path !== '/autenticazione'"
-                    class="turno-subtitle"
-                >
-                    {{ turnoStore.turnoSelezionato === 'primo' ? 'Primo Turno' : 'Secondo Turno' }}
+                    v-if="hasSelectedTurno"
+                    class="turno-subtitle">
+                    {{ nomeTurno }}
                 </div>
             </div>
         </div>
