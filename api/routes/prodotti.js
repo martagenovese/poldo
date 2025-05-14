@@ -1,7 +1,61 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../utils/db');
+const path = require('path');
+const fs = require('fs').promises;
+const multer = require('multer');
 const { authenticateJWT, authorizeRole } = require('../middlewares/authMiddleware');
+
+// Configurazione Multer
+const upload = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => {
+            cb(null, 'uploads/tmp/');
+        },
+        filename: (req, file, cb) => {
+            cb(null, Date.now() + path.extname(file.originalname));
+        }
+    }),
+    fileFilter: (req, file, cb) => {
+        const allowedMimes = [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp'
+        ];
+        cb(null, allowedMimes.includes(file.mimetype));
+    },
+    limits: { fileSize: 5 * 1024 * 1024 }
+});
+
+// Funzione per salvare/aggiornare l'immagine
+async function handleProductImage(file, productId) {
+    const mimeToExt = {
+        'image/jpeg': '.jpg',
+        'image/png': '.png',
+        'image/gif': '.gif',
+        'image/webp': '.webp'
+    };
+    
+    const ext = mimeToExt[file.mimetype];
+    const imagesDir = path.join(__dirname, '../public/images/products');
+    
+    // Elimina immagini esistenti
+    const deletePromises = Object.values(mimeToExt).map(async (ext) => {
+        const filePath = path.join(imagesDir, `${productId}${ext}`);
+        try {
+            await fs.unlink(filePath);
+        } catch {}
+    });
+
+    await Promise.all(deletePromises);
+
+    // Salva nuova immagine
+    const targetPath = path.join(imagesDir, `${productId}${ext}`);
+    await fs.rename(file.path, targetPath);
+    
+    return `/image/${productId}`;
+}
 
 function createQuery(filters) {
     let query = "SELECT p.* FROM Prodotto p";
@@ -288,7 +342,7 @@ router.get('/:id', authenticateJWT, async (req, res) => {
 })
 
 // Crea un nuovo prodotto
-router.post('/', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
+router.post('/', authenticateJWT, authorizeRole(['gestore', 'admin']), upload.single('image'), async (req, res) => {
     const { 
         nome, 
         prezzo, 
@@ -302,21 +356,21 @@ router.post('/', authenticateJWT, authorizeRole(['gestore', 'admin']), async (re
     } = req.body;
 
     if (!nome || !prezzo || !quantita || quantita < 0 || !descrizione || !tags?.length || !ingredienti?.length) {
+        // Cleanup immagine se presente
+        if(req.file) await fs.unlink(req.file.path).catch(() => {});
         return res.status(400).json({ error: 'Campi obbligatori: nome, descrizione, prezzo, quantita, tags e ingredienti' });
     }
 
-    // Gestione idGestione per admin
-    if(req.user.ruolo === 'admin') {
-        if(!req.body.idGestione) {
-            return res.status(400).json({ error: 'Campo idGestione obbligatorio per admin' });
-        }
-        req.user.idGestione = req.body.idGestione;
+    if(req.user.ruolo === 'admin' && !req.body.idGestione) {
+        if(req.file) await fs.unlink(req.file.path).catch(() => {});
+        return res.status(400).json({ error: 'Campo idGestione obbligatorio per admin' });
     }
 
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
 
+        // Inserimento prodotto (rimane identico)
         const [productResult] = await connection.execute(
             `INSERT INTO Prodotto (
                 nome, 
@@ -334,43 +388,57 @@ router.post('/', authenticateJWT, authorizeRole(['gestore', 'admin']), async (re
                 descrizione,
                 req.user.idGestione,
                 quantita,
-                temporaneo || false, // Default 
-                disponibilita !== undefined ? disponibilita : 0, // Default
-                attivo !== undefined ? attivo : true // Default
+                temporaneo || false,
+                disponibilita ?? 0,
+                attivo ?? true
             ]
         );
 
         const productId = productResult.insertId;
 
-        // Tags
+        // Inserimento tags e ingredienti (rimane identico)
         await connection.query(
             'INSERT INTO ProdottoTag (idProdotto, tag) VALUES ?',
             [tags.map(tag => [productId, tag])]
         );
 
-        // Ingredienti
         await connection.query(
             'INSERT INTO ProdottoIngrediente (idProdotto, ingrediente) VALUES ?',
             [ingredienti.map(ingrediente => [productId, ingrediente])]
         );
 
+        // Gestione immagine
+        let imageUrl;
+        if(req.file) {
+            try {
+                imageUrl = await handleProductImage(req.file, productId);
+            } catch (error) {
+                console.error('Errore salvataggio immagine:', error);
+                await fs.unlink(req.file.path).catch(() => {});
+                throw new Error('Salvataggio immagine fallito');
+            }
+        }
+
         await connection.commit();
         res.status(201).json({ 
-            id: productId
+            id: productId,
+            ...(imageUrl && { image: imageUrl })
         });
 
     } catch (error) {
         await connection.rollback();
+        if(req.file) await fs.unlink(req.file.path).catch(() => {});
+        
         console.error("Errore inserimento prodotto:", error);
-
+        
         if(error.code === 'ER_DUP_ENTRY') {
             return res.status(409).json({ error: 'Nome prodotto già esistente' });
         }
         if(error.code === 'ER_NO_REFERENCED_ROW_2') {
             return res.status(404).json({ error: 'Gestione non trovata' });
         }
-        if(error.code === 'ER_BAD_NULL_ERROR') {
-            return res.status(400).json({ error: 'Valori non validi per i campi obbligatori' });
+        if(error.message === 'Salvataggio immagine fallito') {
+            return res.status(500).json({ error: 'Errore nel salvataggio dell\'immagine' });
         }
         
         res.status(500).json({ error: 'Errore interno del server' });
@@ -417,11 +485,12 @@ router.delete('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), asyn
 })
 
 // Aggiorna un prodotto
-router.patch('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async (req, res) => {
+router.patch('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), upload.single('image'), async (req, res) => {
     const { nome, prezzo, descrizione, tags, ingredienti, idGestione } = req.body;
     
     if(req.user.ruolo === 'admin') {
         if(!idGestione) {
+            if(req.file) await fs.unlink(req.file.path).catch(() => {});
             return res.status(400).json({ error: 'Inserire idGestione' });
         }
         req.user.idGestione = idGestione;
@@ -431,7 +500,6 @@ router.patch('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async
     try {
         await connection.beginTransaction();
 
-        // Costruisci dinamicamente l'UPDATE per i campi base
         const updateFields = [];
         const updateValues = [];
         
@@ -458,11 +526,12 @@ router.patch('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async
             
             if(productResult.affectedRows === 0) {
                 await connection.rollback();
+                if(req.file) await fs.unlink(req.file.path).catch(() => {});
                 return res.status(404).json({ error: 'Prodotto non trovato o non tuo' });
             }
         }
 
-        // Aggiorna i tag solo se presenti nella richiesta
+        // Update tags e ingredienti (rimane identico)
         if(tags !== undefined) {
             await connection.execute(
                 'DELETE FROM ProdottoTag WHERE idProdotto = ?',
@@ -478,7 +547,6 @@ router.patch('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async
             }
         }
 
-        // Aggiorna ingredienti solo se presenti nella richiesta
         if(ingredienti !== undefined) {
             await connection.execute(
                 'DELETE FROM ProdottoIngrediente WHERE idProdotto = ?',
@@ -494,11 +562,34 @@ router.patch('/:id', authenticateJWT, authorizeRole(['gestore', 'admin']), async
             }
         }
 
+        // Gestione immagine
+        let imageUrl;
+        if(req.file) {
+            try {
+                imageUrl = await handleProductImage(req.file, req.params.id);
+            } catch (error) {
+                console.error('Errore aggiornamento immagine:', error);
+                await fs.unlink(req.file.path).catch(() => {});
+                throw new Error('Aggiornamento immagine fallito');
+            }
+        }
+
         await connection.commit();
-        res.status(200).json({ message: 'Prodotto modificato con successo' });
+        res.status(200).json({ 
+            message: 'Prodotto modificato con successo',
+            ...(imageUrl && { image: imageUrl })
+        });
+
     } catch (error) {
         await connection.rollback();
+        if(req.file) await fs.unlink(req.file.path).catch(() => {});
+        
         console.error("Errore aggiornamento prodotto:", error);
+        
+        if(error.message === 'Aggiornamento immagine fallito') {
+            return res.status(500).json({ error: 'Errore nell\'aggiornamento dell\'immagine' });
+        }
+        
         res.status(500).json({ error: 'Errore interno del server' });
     } finally {
         connection.release();
@@ -536,5 +627,74 @@ router.patch('/:id/setStatus', authenticateJWT, authorizeRole(['gestore', 'admin
         connection.release();
     }
 });
+
+// Route immagini prodotti
+router.get('/image/:id', authenticateJWT, async (req, res) => {
+    try {
+        const productId = req.params.id;
+        const imagesDir = path.join(__dirname, '../public/images/products');
+        const defaultImage = path.join(imagesDir, 'default.png');
+
+        // Validazione ID
+        if (isNaN(productId)) {
+            return res.status(400).json({ error: 'ID prodotto non valido' });
+        }
+
+        // Gestione immagine default
+        if (productId == -1) {
+            try {
+                await fs.access(defaultImage);
+                return res.sendFile(defaultImage, {
+                    headers: {
+                        'Content-Type': 'image/png',
+                        'Cache-Control': 'public, max-age=2592000'
+                    }
+                });
+            } catch {
+                return res.status(404).json({ error: 'Immagine default non trovata' });
+            }
+        }
+
+        // Verifica esistenza prodotto
+        const [result] = await pool.execute(
+            'SELECT idProdotto FROM Prodotto WHERE idProdotto = ?',
+            [productId]
+        );
+
+        if (result.length === 0) {
+            return res.status(404).json({ error: 'Prodotto non trovato' });
+        }
+
+        const allowedExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
+        
+        // Ricerca file immagine
+        let imagePath;
+        for (const ext of allowedExtensions) {
+            const candidatePath = path.join(imagesDir, `${productId}${ext}`);
+            try {
+                await fs.access(candidatePath);
+                imagePath = candidatePath;
+                break;
+            } catch {
+                // Ignora e continua
+            }
+        }
+
+        if (!imagePath) {
+            return res.status(404).json({ error: 'Immagine non trovata' });
+        }
+
+        res.sendFile(imagePath, {
+            headers: {
+                'Content-Type': `image/${path.extname(imagePath).slice(1)}`,
+                'Cache-Control': 'public, max-age=2592000'
+            }
+        });
+        
+    } catch (error) {
+        next(error);
+    }
+});
+
 
 module.exports = router;
