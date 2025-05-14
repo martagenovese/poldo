@@ -2,6 +2,8 @@ require('dotenv').config({ path: 'secrets.env' });
 const cors = require('cors');
 
 const express = require('express');
+const path = require('path');
+
 const logger = require('./utils/logger');
 const authRoutes = require('./routes/auth');
 const classiRoutes = require('./routes/classi');
@@ -33,13 +35,13 @@ app.use((req, res, next) => {
 app.use("/v1/auth", authRoutes);
 app.use("/v1/classi", classiRoutes);
 app.use("/v1/utenti", utentiRoutes);
-//app.use(adminRoutes);
 app.use("/v1/prodotti", productRoutes);
 app.use('/v1/ordini', orderRoutes);
 app.use('/v1/ingredienti', ingredientsRoutes);
 app.use('/v1/tag', tagRoutes);
 app.use('/v1/turni', turniRoutes);
 app.use('/v1/qr', qrRoutes);
+app.use('/image', express.static(path.join(__dirname, 'public/images/products')));
 //app.use(reportRoutes);
 
 // Error handling

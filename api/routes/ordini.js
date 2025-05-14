@@ -376,152 +376,202 @@ router.get('/me',
 );
 
 // Crea un nuovo ordine
-router.post('/',
-    authenticateJWT,
-    authorizeRole(['studente', 'prof', 'segreteria', 'terminale', 'admin']),
-    async (req, res) => {
-        const connection = await pool.getConnection();
-        await connection.beginTransaction();
+router.post(
+  '/',
+  authenticateJWT,
+  authorizeRole(['studente', 'prof', 'segreteria', 'terminale', 'admin']),
+  async (req, res) => {
+    const connection = await pool.getConnection()
+    await connection.beginTransaction()
 
-        try {
-            const userId = req.user.id;
-            const userRole = req.user.ruolo;
-            const { prodotti, nTurno: bodyTurno } = req.body;
-            const today = new Date().toISOString().split('T')[0];
+    try {
+      const userId = req.user.id
+      const userRole = req.user.ruolo
+      const { prodotti, nTurno: bodyTurno } = req.body
+      const today = new Date().toISOString().split('T')[0]
 
-            const giorniEnum = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'];
-            const giorno = giorniEnum[new Date().getDay()];
-            const giorniValidi = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom']; //TODO: togliere sab e dom
+      const giorniEnum = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab']
+      const giorno = giorniEnum[new Date().getDay()]
+      const giorniValidi = ['lun', 'mar', 'mer', 'gio', 'ven']
 
-            if (!giorniValidi.includes(giorno)) {
-                await connection.rollback();
-                return res.status(400).json({ error: 'Ordini consentiti solo nei giorni feriali' });
-            }
+      if (!giorniValidi.includes(giorno)) {
+        await connection.rollback()
+        return res.status(400).json({ error: 'Ordini consentiti solo nei giorni feriali' })
+      }
 
-            let nTurno;
-            if (userRole === 'studente' || userRole === 'paninaro') {
-                nTurno = parseInt(bodyTurno, 10);
+      let nTurno
+      if (userRole === 'studente' || userRole === 'paninaro') {
+        nTurno = parseInt(bodyTurno, 10)
 
-                const [turno] = await connection.query(`
-                    SELECT oraInizioOrdine, oraFineOrdine, studenti FROM Turno 
-                    WHERE n = ? AND giorno = ?
-                `, [nTurno, giorno]);
+        const [turno] = await connection.query(
+          `SELECT oraInizioOrdine, oraFineOrdine, studenti FROM Turno 
+           WHERE n = ? AND giorno = ?`,
+          [nTurno, giorno]
+        )
 
-                if (turno.length === 0) {
-                    await connection.rollback();
-                    return res.status(400).json({ error: 'Turno non disponibile' });
-                }
-
-                if (userRole === 'studente' && turno[0]?.studenti === 0) {
-                    await connection.rollback();
-                    return res.status(400).json({ error: 'Turno non valido per studenti' });
-                }
-
-                const oraCorrente = new Date().toLocaleTimeString('it-IT', { 
-                    hour12: false, 
-                    timeZone: 'Europe/Rome' 
-                }).slice(0, 5);
-
-                const { oraInizioOrdine, oraFineOrdine } = turno[0];
-                if (oraCorrente < oraInizioOrdine || oraCorrente > oraFineOrdine) {
-                    await connection.rollback();
-                    return res.status(400).json({ 
-                        error: `Fuori orario per il turno ${nTurno}: ${oraInizioOrdine}-${oraFineOrdine}`
-                    });
-                }
-            } else {
-                nTurno = 0;
-                const [turno] = await connection.query(`
-                    SELECT * FROM Turno WHERE n = ? AND giorno = ?
-                `, [nTurno, giorno]);
-
-                if (turno.length === 0) {
-                    await connection.rollback();
-                    return res.status(400).json({ error: 'Configurazione turno non trovata' });
-                }
-            }
-
-            if (!prodotti || !Array.isArray(prodotti) || prodotti.length === 0) {
-                await connection.rollback();
-                return res.status(400).json({ error: 'Lista prodotti vuota' });
-            }
-
-            const productIds = prodotti.map(p => p.idProdotto);
-            const placeholders = productIds.map(() => '?').join(',');
-            const [dbProducts] = await connection.query(`
-                SELECT idProdotto, prezzo, nome FROM Prodotto
-                WHERE idProdotto IN (${placeholders}) AND attivo = TRUE
-            `, [...productIds]);
-
-            const availableProductMap = new Map(dbProducts.map(p => [p.idProdotto, p]));
-            for (const item of prodotti) {
-                if (!availableProductMap.has(item.idProdotto)) {
-                    await connection.rollback();
-                    return res.status(400).json({ error: `Prodotto ${item.idProdotto} non disponibile` });
-                }
-                if (!Number.isInteger(item.quantita) || item.quantita <= 0) {
-                    await connection.rollback();
-                    return res.status(400).json({ error: `Quantità non valida per prodotto ${item.idProdotto}` });
-                }
-            }
-
-            let idOrdineClasse;
-            let idOrdineSingolo;
-
-            if (userRole === 'studente' || userRole === 'paninaro') {
-                const [userClass] = await connection.query(`
-                    SELECT classe FROM Utente WHERE idUtente = ?
-                `, [userId]);
-
-                if (!userClass[0]?.classe) {
-                    await connection.rollback();
-                    return res.status(400).json({ error: 'Classe non assegnata' });
-                }
-                
-                const [ordineSingoloResult] = await connection.query(`
-                    INSERT INTO OrdineSingolo (data, nTurno, giorno, user)
-                    VALUES (?, ?, ?, ?)
-                `, [today, nTurno, giorno, userId]);
-                idOrdineSingolo = ordineSingoloResult.insertId;
-
-            } else {
-                const classeExt = userId;
-                const [newOrderClasseResult] = await connection.query(`
-                    INSERT INTO OrdineClasse (idResponsabile, data, nTurno, giorno, classe, confermato, preparato)
-                    VALUES (?, ?, ?, ?, ?, TRUE, FALSE)
-                `, [userId, today, nTurno, giorno, classeExt]);
-                idOrdineClasse = newOrderClasseResult.insertId;
-
-                const [ordineSingoloResult] = await connection.query(`
-                    INSERT INTO OrdineSingolo (data, nTurno, giorno, user, idOrdineClasse)
-                    VALUES (?, ?, ?, ?, ?)
-                `, [today, nTurno, giorno, userId, idOrdineClasse]);
-                idOrdineSingolo = ordineSingoloResult.insertId;
-            }
-
-            const dettagliValues = prodotti.map(item => [idOrdineSingolo, item.idProdotto, item.quantita]);
-            await connection.query(`
-                INSERT INTO DettagliOrdineSingolo (idOrdineSingolo, idProdotto, quantita)
-                VALUES ?
-            `, [dettagliValues]);
-
-            await connection.commit();
-            res.status(201).json({
-                success: true,
-                idOrdineSingolo: idOrdineSingolo,
-                idOrdineClasse: idOrdineClasse
-            });
-
-        } catch (error) {
-            await connection.rollback();
-            console.error('Errore creazione ordine:', error);
-            res.status(500).json({ error: error.code === 'ER_DUP_ENTRY' ? 
-                'Ordine duplicato' : 'Errore database' });
-        } finally {
-            if (connection) connection.release();
+        if (turno.length === 0) {
+          await connection.rollback()
+          return res.status(400).json({ error: 'Turno non disponibile' })
         }
+
+        if (userRole === 'studente' && turno[0]?.studenti === 0) {
+          await connection.rollback()
+          return res.status(400).json({ error: 'Turno non valido per studenti' })
+        }
+
+        const oraCorrente = new Date()
+          .toLocaleTimeString('it-IT', {
+            hour12: false,
+            timeZone: 'Europe/Rome',
+          })
+          .slice(0, 5)
+
+        const { oraInizioOrdine, oraFineOrdine } = turno[0]
+        if (oraCorrente < oraInizioOrdine || oraCorrente > oraFineOrdine) {
+          await connection.rollback()
+          return res.status(400).json({
+            error: `Fuori orario per il turno ${nTurno}: ${oraInizioOrdine}-${oraFineOrdine}`,
+          })
+        }
+      } else {
+        nTurno = 0
+        const [turno] = await connection.query(
+          `SELECT * FROM Turno WHERE n = ? AND giorno = ?`,
+          [nTurno, giorno]
+        )
+
+        if (turno.length === 0) {
+          await connection.rollback()
+          return res.status(400).json({ error: 'Configurazione turno non trovata' })
+        }
+      }
+
+      if (!prodotti || !Array.isArray(prodotti) || prodotti.length === 0) {
+        await connection.rollback()
+        return res.status(400).json({ error: 'Lista prodotti vuota' })
+      }
+
+      // Verifica prodotti e disponibilità
+      const productIds = prodotti.map((p) => p.idProdotto)
+      const placeholders = productIds.map(() => '?').join(',')
+      const [dbProducts] = await connection.query(
+        `SELECT idProdotto, prezzo, nome, disponibilita FROM Prodotto
+         WHERE idProdotto IN (${placeholders}) AND attivo = TRUE`,
+        [...productIds]
+      )
+
+      const availableProductMap = new Map(dbProducts.map((p) => [p.idProdotto, p]))
+      
+      // Controllo quantità e aggiornamento disponibilità
+      for (const item of prodotti) {
+        const product = availableProductMap.get(item.idProdotto)
+        
+        if (!product) {
+          await connection.rollback()
+          return res.status(400).json({ error: `Prodotto ${item.idProdotto} non disponibile` })
+        }
+
+        if (!Number.isInteger(item.quantita) || item.quantita <= 0) {
+          await connection.rollback()
+          return res.status(400).json({ error: `Quantità non valida per prodotto ${item.idProdotto}` })
+        }
+
+        if (product.disponibilita < item.quantita) {
+          await connection.rollback()
+          return res.status(400).json({ 
+            error: `Quantità insufficiente per ${product.nome} (disponibili: ${product.disponibilita})` 
+          })
+        }
+
+        // Aggiornamento concorrente della disponibilità
+        const [updateResult] = await connection.query(
+          `UPDATE Prodotto 
+           SET disponibilita = disponibilita - ? 
+           WHERE idProdotto = ? AND disponibilita >= ?`,
+          [item.quantita, item.idProdotto, item.quantita]
+        )
+
+        if (updateResult.affectedRows === 0) {
+          await connection.rollback()
+          return res.status(400).json({ 
+            error: `Quantità non più disponibile per ${product.nome}` 
+          })
+        }
+      }
+
+      // Creazione ordine
+      let idOrdineClasse
+      let idOrdineSingolo
+
+      if (userRole === 'studente' || userRole === 'paninaro') {
+        const [userClass] = await connection.query(
+          `SELECT classe FROM Utente WHERE idUtente = ?`,
+          [userId]
+        )
+
+        if (!userClass[0]?.classe) {
+          await connection.rollback()
+          return res.status(400).json({ error: 'Classe non assegnata' })
+        }
+
+        const [ordineSingoloResult] = await connection.query(
+          `INSERT INTO OrdineSingolo (data, nTurno, giorno, user)
+           VALUES (?, ?, ?, ?)`,
+          [today, nTurno, giorno, userId]
+        )
+        idOrdineSingolo = ordineSingoloResult.insertId
+      } else {
+        const classeExt = userId
+        const [newOrderClasseResult] = await connection.query(
+          `INSERT INTO OrdineClasse (idResponsabile, data, nTurno, giorno, classe, confermato, preparato)
+           VALUES (?, ?, ?, ?, ?, TRUE, FALSE)`,
+          [userId, today, nTurno, giorno, classeExt]
+        )
+        idOrdineClasse = newOrderClasseResult.insertId
+
+        const [ordineSingoloResult] = await connection.query(
+          `INSERT INTO OrdineSingolo (data, nTurno, giorno, user, idOrdineClasse)
+           VALUES (?, ?, ?, ?, ?)`,
+          [today, nTurno, giorno, userId, idOrdineClasse]
+        )
+        idOrdineSingolo = ordineSingoloResult.insertId
+      }
+
+      // Inserimento dettagli ordine
+      const dettagliValues = prodotti.map((item) => [
+        idOrdineSingolo,
+        item.idProdotto,
+        item.quantita,
+      ])
+      
+      await connection.query(
+        `INSERT INTO DettagliOrdineSingolo (idOrdineSingolo, idProdotto, quantita)
+         VALUES ?`,
+        [dettagliValues]
+      )
+
+      await connection.commit()
+      
+      res.status(201).json({
+        success: true,
+        idOrdineSingolo: idOrdineSingolo,
+        idOrdineClasse: idOrdineClasse,
+        message: 'Ordine creato e disponibilità aggiornata con successo',
+      })
+
+    } catch (error) {
+      await connection.rollback()
+      console.error('Errore creazione ordine:', error)
+      res.status(500).json({ 
+        error: error.code === 'ER_DUP_ENTRY' 
+          ? 'Ordine duplicato' 
+          : 'Errore durante la creazione dell\'ordine' 
+      })
+    } finally {
+      if (connection) connection.release()
     }
-);
+  }
+)
 
 // Ottieni tutti gli ordini per la classe del paninaro
 router.get('/classi/me',

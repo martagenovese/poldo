@@ -13,7 +13,7 @@ passport.use(new GoogleStrategy({
 },
 async (accessToken, refreshToken, profile, done) => {
     const connection = await pool.getConnection();
-    console.log(profile);
+    //console.log(profile);
     try {
         const [rows] = await connection.execute(
             'SELECT idUtente as id, ruolo FROM Utente WHERE google_id = ?',

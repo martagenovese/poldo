@@ -5,7 +5,6 @@ const { DB } = require('../config/config');
 const pool = mysql.createPool(DB);
 module.exports = pool;
 
-
 /*
 database structure
 
