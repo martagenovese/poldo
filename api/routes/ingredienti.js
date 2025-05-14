@@ -46,7 +46,7 @@ router.post('/', authenticateJWT, authorizeRole(['gestore', 'admin']), async (re
 
     const connection = await pool.getConnection();
     try {
-        const [result] = await connection.query(
+        const [_result] = await connection.query(
             'INSERT INTO Ingrediente (nome) VALUES (?)',
             [nomeIngrediente]
         );
