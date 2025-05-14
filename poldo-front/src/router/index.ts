@@ -5,6 +5,8 @@ import CarrelloView from '../views/CarrelloView.vue'
 import { useTurnoStore } from '../stores/turno'
 import NewProdottiView from '../views/Gestione/NewProdottiView.vue'
 import ModificaView from '../views/Gestione/ProdottiView.vue'
+import OrdinazioniView from '@/views/Gestione/OrdinazioniView.vue'
+import OrdinazioniProf from '@/views/Gestione/OrdinazioniProf.vue'
 import QRView from '../views/QrView.vue'
 
 const router = createRouter({
@@ -41,6 +43,16 @@ const router = createRouter({
       path: '/gestione/prodotti',
       name: 'modificaProdotti',
       component: ModificaView,
+    },
+    {
+      path: '/gestione/ordinazioni',
+      name: 'ordinazioni',
+      component: OrdinazioniView,
+    },
+    {
+      path: '/gestione/ordinazioni/prof',
+      name: 'ordinazioniProf',
+      component: OrdinazioniProf,
     }
   ],
 })

@@ -17,13 +17,17 @@ defineProps<{
 const pageTitles = {
     home: 'Home',
     prodotti: 'Prodotti',
-    carrello: 'Carrello'
+    carrello: 'Carrello',
+    ordinazioni: 'Ordinazioni',
+    ordinazioniProf: 'Ordinazioni Professori',
 } as const
 
 const navRoutes = [
     { name: 'Home', path: '/', requiresTurno: false },
     { name: 'Prodotti', path: '/prodotti', requiresTurno: true },
-    { name: 'Carrello', path: '/carrello', requiresTurno: true }
+    { name: 'Carrello', path: '/carrello', requiresTurno: true },
+    { name: 'Ordinazioni', path: '/gestione/ordinazioni', requiresTurno: false },
+    { name: 'Ordinazioni Professori', path: '/gestione/ordinazioni/prof', requiresTurno: false }
 ] as const
 
 const toggleMenu = () => showMenu.value = !showMenu.value
@@ -61,8 +65,7 @@ const navigate = (path: string, requiresTurno: boolean) => {
                 <div class="main-title">Poldo {{ pageTitle }}</div>
                 <div
                     v-if="hasSelectedTurno"
-                    class="turno-subtitle"
-                >
+                    class="turno-subtitle">
                     {{ nomeTurno }}
                 </div>
             </div>
