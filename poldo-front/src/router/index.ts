@@ -27,8 +27,8 @@ const router = createRouter({
       meta: { requiresTurno: true }
     },
     {
-      path: '/inserisciprodotto',
-      name: 'inserisciProdotto',
+      path: '/gestione/addProdotto',
+      name: 'addProdotto',
       component: AddProdottoView,
     },
     {

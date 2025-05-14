@@ -37,26 +37,6 @@ const flipCard = (event: Event) => {
     isFlipped.value = !isFlipped.value
   }
 }
-
-const handleScroll = (event: WheelEvent) => {
-  event.preventDefault()
-  const delta = Math.sign(event.deltaY)
-  const container = event.currentTarget as HTMLElement
-  container.scrollTop += delta * 20
-}
-
-let touchStartY = 0
-const handleTouchStart = (event: TouchEvent) => {
-  touchStartY = event.touches[0].clientY
-}
-
-const handleTouchMove = (event: TouchEvent) => {
-  const touchY = event.touches[0].clientY
-  const delta = touchStartY - touchY
-  const container = event.currentTarget as HTMLElement
-  container.scrollTop += delta
-  touchStartY = touchY
-}
 </script>
 
 <template>
@@ -85,7 +65,12 @@ const handleTouchMove = (event: TouchEvent) => {
             <div v-if="product.price !== undefined" class="price">€{{ product.price.toFixed(2) }}</div>
           </div>
 
-          <QuantityControl :product-id="id" />
+          <div class="disponibility-counter" v-if="product.disponibility > 0">
+            Disponibili: {{ product.disponibility }}/{{ product.quantity }}
+          </div>
+
+          <QuantityControl v-if="product.disponibility > 0" :product-id="id" />
+          <div v-else class="out-of-stock-message">Prodotto esaurito</div>
         </div>
       </div>
 
@@ -94,11 +79,7 @@ const handleTouchMove = (event: TouchEvent) => {
         <h3 class="title">{{ product.title }}</h3>
         <div class="scroll">
           <div class="descr">
-
-            <!-- <div v-if="price !== undefined" class="price">€{{ price.toFixed(2) }}</div> -->
-
-            <div class="details" @wheel.stop="handleScroll" @touchstart="handleTouchStart"
-              @touchmove.stop="handleTouchMove">
+            <div class="details">
               <div class="description-section">
                 <h4>Descrizione</h4>
                 <p>{{ product.description || 'Nessuna descrizione disponibile' }}</p>
@@ -201,26 +182,26 @@ const handleTouchMove = (event: TouchEvent) => {
 }
 
 .image-container {
-    flex-shrink: 0;
-    width: 100px;
-    height: 100px;
-    border-radius: 2.25vmax;
-    overflow: hidden;
-    position: relative;
-    margin-right: 16px;
-    background: var(--color-background-soft);
+  flex-shrink: 0;
+  width: 100px;
+  height: 100px;
+  border-radius: 2.25vmax;
+  overflow: hidden;
+  position: relative;
+  margin-right: 16px;
+  background: var(--color-background-soft);
 }
 
 .product-image {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    padding: 5px;
-    border-radius: 2.25vmax;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 5px;
+  border-radius: 2.25vmax;
 }
 
 .info {
@@ -266,10 +247,13 @@ const handleTouchMove = (event: TouchEvent) => {
 /* Back side specific styles */
 .details {
   height: auto;
+  overflow-y: auto;
   padding-right: 5px;
   display: flex;
   flex-direction: column;
   gap: 15px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 /* Custom scrollbar styling */
@@ -381,11 +365,45 @@ const handleTouchMove = (event: TouchEvent) => {
   height: 24px;
 }
 
+.disponibility-counter {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--poldo-primary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 2;
+}
+
+.out-of-stock-message {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  color: var(--poldo-red);
+  font-weight: bold;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
 @media (prefers-color-scheme: dark) {
+  .disponibility-counter {
+    background: rgba(0, 0, 0, 0.7);
+    color: var(--poldo-text);
+  }
 
   .short-description,
   .description-section p {
     color: var(--poldo-text);
+  }
+
+  .out-of-stock-message {
+    background: rgba(0, 0, 0, 0.7);
   }
 }
 </style>

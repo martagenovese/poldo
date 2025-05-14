@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, watchEffect } from 'vue'
 import { useGestioneProductsStore } from '@/stores/Gestione/products'
-import type { Product } from '@/stores/products'
+import type { Product } from '@/stores/Gestione/products'
 import { useFiltersStore } from '@/stores/Gestione/filters'
 import { usePendingChangesStore } from '@/stores/Gestione/pendingChanges'
 import type { ProductChange } from '@/stores/Gestione/pendingChanges'
@@ -24,6 +24,7 @@ if (!product.value?.id) throw new Error(`Prodotto con ID ${props.productId} non 
 const showEditModal = ref(false)
 const localTitle = ref(product.value?.title || '')
 const localPrice = ref(product.value?.price || 0)
+const localQuantity = ref(product.value?.quantity || 0)
 const localDescription = ref(product.value?.description || '')
 const localIngredients = ref([...(product.value?.ingredients || [])])
 const localTags = ref([...(product.value?.tags || [])])
@@ -36,6 +37,7 @@ const originalData = ref<Product>({
   description: product.value?.description || '',
   ingredients: product.value?.ingredients || [],
   price: product.value?.price || 0,
+  quantity: product.value?.quantity || 0,
   tags: product.value?.tags || [],
   isActive: product.value?.isActive || false,
   imageSrc: product.value?.imageSrc || ''
@@ -85,7 +87,7 @@ const checkForChanges = () => {
 
   // Controllo modifiche per ogni campo
   const fields: (keyof Omit<ProductChange, 'id'>)[] = [
-    'title', 'price', 'description',
+    'title', 'price', 'quantity', 'description',
     'ingredients', 'tags', 'isActive', 'imageSrc'
   ]
 
@@ -93,6 +95,7 @@ const checkForChanges = () => {
     const currentValue = {
       title: localTitle.value,
       price: localPrice.value,
+      quantity: localQuantity.value,
       description: localDescription.value,
       ingredients: localIngredients.value,
       tags: localTags.value,
@@ -121,6 +124,7 @@ const openEditModal = () => {
   if (pendingData) {
     if (pendingData.title !== undefined) localTitle.value = pendingData.title;
     if (pendingData.price !== undefined) localPrice.value = pendingData.price;
+    if (pendingData.quantity !== undefined) localQuantity.value = pendingData.quantity;
     if (pendingData.description !== undefined) localDescription.value = pendingData.description;
     if (pendingData.ingredients !== undefined) localIngredients.value = pendingData.ingredients;
     if (pendingData.tags !== undefined) localTags.value = pendingData.tags;
@@ -135,6 +139,7 @@ const isFieldModified = (field: keyof Omit<Product, 'id'>): boolean => {
   const currentValue = {
     title: localTitle.value,
     price: localPrice.value,
+    quantity: localQuantity.value,
     description: localDescription.value,
     ingredients: localIngredients.value,
     tags: localTags.value,
@@ -159,6 +164,9 @@ const resetField = (field: keyof Product) => {
     case 'price':
       localPrice.value = original as number
       break
+    case 'quantity':
+      localQuantity.value = original as number
+      break
     case 'description':
       localDescription.value = original as string
       break
@@ -182,6 +190,7 @@ const resetField = (field: keyof Product) => {
 const resetAll = () => {
   localTitle.value = originalData.value.title
   localPrice.value = originalData.value.price
+  localQuantity.value = originalData.value.quantity
   localDescription.value = originalData.value.description
   localIngredients.value = [...originalData.value.ingredients]
   localTags.value = [...originalData.value.tags]
@@ -263,6 +272,15 @@ watchEffect(() => {
                 title="Ripristina al valore originale">↺</button>
             </div>
             <input type="number" v-model.number="localPrice" step="0.01" />
+          </div>
+
+          <div class="form-group">
+            <div class="label-wrapper">
+              <span>Quantità:</span>
+              <button v-if="isFieldModified('quantity')" class="reset-btn" @click.stop="resetField('quantity')"
+                title="Ripristina al valore originale">↺</button>
+            </div>
+            <input type="number" v-model.number="localQuantity" min="0" step="1" />
           </div>
 
           <div class="form-group">

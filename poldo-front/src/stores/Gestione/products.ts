@@ -8,6 +8,7 @@ export interface Product {
   ingredients: string[]
   imageSrc: string
   price: number
+  quantity: number
   tags: string[]
   isActive: boolean
 }
@@ -80,6 +81,7 @@ export const useGestioneProductsStore = defineStore('gestioneProducts', () => {
             ingredients: item.ingredienti,
             imageSrc: finalImageSrc,
             price: parseFloat(item.prezzo),
+            quantity: item.quantita,
             tags: item.tags,
             isActive: item.attivo === 1
           };
@@ -91,20 +93,6 @@ export const useGestioneProductsStore = defineStore('gestioneProducts', () => {
     }
   };
 
-  // Aggiorna checkImageExists
-  async function checkImageExists(url: string): Promise<boolean> {
-    try {
-      const response = await fetch(url, {
-        headers: new Headers({
-          Authorization: `Bearer ${API_CONFIG.TOKEN}`
-        })
-      })
-      return response.ok
-    } catch {
-      return false
-    }
-  }
-
   const addProduct = async (newProduct: Omit<Product, 'id'>) => {
     try {
       const formData = new FormData()
@@ -113,6 +101,7 @@ export const useGestioneProductsStore = defineStore('gestioneProducts', () => {
       formData.append('ingredienti', JSON.stringify(newProduct.ingredients))
       formData.append('tags', JSON.stringify(newProduct.tags))
       formData.append('prezzo', newProduct.price.toFixed(2))
+      formData.append('quantita', newProduct.quantity.toString())
       formData.append('attivo', newProduct.isActive ? '1' : '0')
 
       // Se c'è un'immagine da caricare
@@ -161,6 +150,7 @@ export const useGestioneProductsStore = defineStore('gestioneProducts', () => {
       if (updates.title !== undefined) formData.append('nome', updates.title)
       if (updates.description !== undefined) formData.append('descrizione', updates.description)
       if (updates.price !== undefined) formData.append('prezzo', updates.price.toFixed(2))
+        if (updates.quantity !== undefined) formData.append('quantita', updates.quantity.toString())
       if (updates.tags !== undefined) formData.append('tags', JSON.stringify(updates.tags))
       if (updates.ingredients !== undefined) formData.append('ingredienti', JSON.stringify(updates.ingredients))
       if (updates.isActive !== undefined) formData.append('attivo', updates.isActive ? '1' : '0')

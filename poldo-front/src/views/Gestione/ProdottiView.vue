@@ -118,7 +118,7 @@ const saveAllChanges = async () => {
       }
     }
 
-    window.location.reload();
+    //window.location.reload();
 
   } catch (error) {
     console.error('Errore durante il salvataggio:', error);
@@ -197,7 +197,7 @@ onUnmounted(() => window.removeEventListener('resize', onResize))
     </div>
 
     <button class="add-button" :class="{ disabled: hasPendingChanges }" :disabled="hasPendingChanges"
-      @click="router.push('/add-product')">
+      @click="router.push('addProdotto')">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
         <path d="M12 2v20M2 12h20" />
       </svg>

@@ -4,6 +4,7 @@ export type ProductChange = {
   id: number
   title?: string
   price?: number
+  quantity?: number
   description?: string
   ingredients?: string[]
   tags?: string[]

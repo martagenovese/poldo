@@ -8,6 +8,8 @@ export interface Product {
   ingredients: string[]
   imageSrc: string
   price: number
+  quantity: number
+  disponibility: number
   tags: string[]
   isActive: boolean
 }
@@ -23,16 +25,6 @@ const headers = new Headers({
   Accept: 'application/json',
   'Content-Type': 'application/json'
 })
-
-function sanitizeFileName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-    .replace(/-+/g, '-')
-    .replace(/^-+/, '')
-    .replace(/-+$/, '')
-}
 
 async function handleRequest<T>(
   endpoint: string,
@@ -62,6 +54,7 @@ async function handleRequest<T>(
 
 export const useProductsStore = defineStore('products', () => {
   const products = ref<Product[]>([])
+  const defaultImageBlobUrl = ref<string>('')
 
   const allIngredients = computed(() => {
     const ingredients = new Set<string>()
@@ -79,8 +72,30 @@ export const useProductsStore = defineStore('products', () => {
     return Array.from(tags)
   })
 
-  const initializeProducts = async () => {
+  async function fetchDefaultImage() {
     try {
+      const response = await fetch(API_CONFIG.DEFAULT_IMAGE, {
+        headers: new Headers({
+          Authorization: `Bearer ${API_CONFIG.TOKEN}`
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch default image: ${response.status}`)
+      }
+
+      const blob = await response.blob()
+      defaultImageBlobUrl.value = URL.createObjectURL(blob)
+    } catch (error) {
+      console.error('Error fetching default image:', error)
+      defaultImageBlobUrl.value = API_CONFIG.DEFAULT_IMAGE
+    }
+  }
+
+   const initializeProducts = async () => {
+    try {
+      await fetchDefaultImage()
+
       const raw = await handleRequest<any[]>(
         'prodotti',
         'Errore fetch prodotti'
@@ -95,8 +110,10 @@ export const useProductsStore = defineStore('products', () => {
           title: item.nome,
           description: item.descrizione,
           ingredients: item.ingredienti,
-          imageSrc: imageExists ? productImageUrl : API_CONFIG.DEFAULT_IMAGE,
+          imageSrc: imageExists ? productImageUrl : defaultImageBlobUrl.value,
           price: parseFloat(item.prezzo),
+          quantity: item.quantita,
+          disponibility: item.disponibilita,
           tags: item.tags,
           isActive: item.attivo === 1
         }
