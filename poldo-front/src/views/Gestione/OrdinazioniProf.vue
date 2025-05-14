@@ -128,7 +128,7 @@ const turnoStore = useTurnoStore()
 // }
 // API configurazione
 const API_CONFIG = {
-  BASE_URL: 'http://localhost:5000/v1',
+  BASE_URL: 'http://figliolo.it:5005/v1',
   TOKEN: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NDgsInJ1b2xvIjoiYWRtaW4iLCJpYXQiOjE3NDQyNzk2ODMsImV4cCI6MTc3NTgzNzI4M30.AelK6BkvrydKSqNGuXbzWGzST4yctrHvdjy66XeoMHI"
 }
 
@@ -395,7 +395,7 @@ const markOrderAsPrepared = async (order: ClassOrder) => {
     }
     
     const API_CONFIG = {
-      BASE_URL: 'http://localhost:5000/v1',
+      BASE_URL: 'http://figliolo.it:5005/v1',
       TOKEN: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NDgsInJ1b2xvIjoiYWRtaW4iLCJpYXQiOjE3NDQyNzk2ODMsImV4cCI6MTc3NTgzNzI4M30.AelK6BkvrydKSqNGuXbzWGzST4yctrHvdjy66XeoMHI"
     }
     
@@ -710,6 +710,70 @@ h2 {
 .mark-prepared-btn svg {
   width: 18px;
   height: 18px;
+}
+
+/* Modifica questa sezione */
+.timerange-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 10px;
+  background-color: var(--card-bg);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px var(--card-shadow);
+  margin: 10px 0;
+}
+
+.time-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-selector label {
+  font-weight: 500;
+  color: var(--poldo-text);
+  font-size: 0.9rem;
+}
+
+.time-selector input {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-background);
+  color: var(--poldo-text);
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.time-selector input:focus {
+  outline: none;
+  border-color: var(--poldo-primary);
+  box-shadow: 0 0 0 2px rgba(239, 194, 12, 0.2);
+}
+
+.apply-btn {
+  padding: 8px 20px;
+  background-color: var(--poldo-primary);
+  color: var(--poldo-background);
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.apply-btn:hover {
+  background-color: var(--poldo-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(239, 194, 12, 0.3);
+}
+
+.apply-btn:active {
+  transform: translateY(0);
 }
 
 /* Responsive adjustments */
