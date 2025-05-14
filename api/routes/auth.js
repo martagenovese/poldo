@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcrypt');
 const passport = require('passport');
 const pool = require('../utils/db');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
@@ -10,8 +9,7 @@ passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: process.env.GOOGLE_CALLBACK_URL
-},
-async (accessToken, refreshToken, profile, done) => {
+}, async (accessToken, refreshToken, profile, done) => {
     const connection = await pool.getConnection();
     //console.log(profile);
     try {
@@ -45,11 +43,7 @@ async (accessToken, refreshToken, profile, done) => {
     }
 }));
 
-// Google OAuth
-router.get('/google', passport.authenticate('google', { 
-    scope: ['profile', 'email'], 
-    session: false
-}));
+
 
 router.get('/google/callback', passport.authenticate('google', { failureRedirect: '/login', session: false }), (req, res) => {
     const token = jwt.sign(
@@ -62,13 +56,19 @@ router.get('/google/callback', passport.authenticate('google', { failureRedirect
     //res.status(200).json({token: token});
     res.cookie('jwt', token, {
         httpOnly: true,
-        secure: true,
+        secure: false,
         sameSite: 'Lax', //TODO: cambiare lax-->domini diversi, strict-->dominio uguale
-        maxAge: 1000 * 60 * 3,
+        maxAge: 1000 * 60 * 30,
     });
     //res.redirect(`http://localhost:5173/callback#token=${token}`);
-    res.status(200).redirect('http://localhost:5173/callback');
+    res.status(200).redirect('http://l.figliolo.it:5173/');
 });
+
+// Google OAuth
+router.get('/google', passport.authenticate('google', { 
+    scope: ['profile', 'email'], 
+    session: false
+}));
 
 router.post('/login', async (req, res) => {
     const { username, password } = req.body;
@@ -100,6 +100,65 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// Attivare ruolo Paninaro
+
+router.get('/logout', (req, res) => {
+    res.clearCookie('jwt');
+    res.status(200).json({ message: 'Logout effettuato' });
+});
+
+router.get('/check', async (req, res) => {
+    const token = req.cookies.jwt;
+    if (!token) {
+        return res.status(401).json({ error: 'Token non fornito' });
+    }
+    const connection = await pool.getConnection();
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        const [users] = await connection.query(
+            'SELECT bannato, ruolo FROM Utente WHERE idUtente = ?', 
+            [decoded.id]
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({ error: 'Utente non trovato' });
+        }
+
+        const user = users[0];
+
+        if (user.bannato === 1) {
+            return res.status(403).json({ error: 'Utente bannato' });
+        }
+
+        req.user = {
+            ...decoded,
+            ruolo: user.ruolo,
+            bannato: user.bannato
+        };
+
+        const [userData] = await connection.query(
+            'SELECT nome, foto_url, ruolo FROM Utente WHERE idUtente = ?',
+            [req.user.id]
+        );
+
+        res.status(200).json(userData[0]);
+        
+    } catch (error) {
+        console.error(error);
+        
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({ error: 'Token scaduto' });
+        }
+        
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ error: 'Token non valido' });
+        }
+
+        res.status(500).json({ error: 'Errore del server' });
+    } finally {
+        connection.release();
+    }
+}
+);
 
 module.exports = router;

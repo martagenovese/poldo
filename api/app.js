@@ -1,10 +1,12 @@
 require('dotenv').config({ path: 'secrets.env' });
 const cors = require('cors');
-
 const express = require('express');
+const cookieParser = require('cookie-parser');
+
 const path = require('path');
 
 const logger = require('./utils/logger');
+
 const authRoutes = require('./routes/auth');
 const classiRoutes = require('./routes/classi');
 const utentiRoutes = require('./routes/utenti');
@@ -21,10 +23,12 @@ const PORT = process.env.PORT;
 
 // Middleware
 app.use(cors({
-  origin: '*',
+  origin: 'http://l.figliolo.it:5173',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
 }));
+app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(express.json());
 app.use((req, res, next) => {
     logger.info(`${req.method} ${req.url}`);
