@@ -7,6 +7,7 @@ import NewProdottiView from '../views/Gestione/NewProdottiView.vue'
 import ModificaView from '../views/Gestione/ProdottiView.vue'
 import OrdinazioniView from '@/views/Gestione/OrdinazioniView.vue'
 import OrdinazioniProf from '@/views/Gestione/OrdinazioniProf.vue'
+import QRView from '../views/QrView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -27,6 +28,11 @@ const router = createRouter({
       name: 'carrello',
       component: CarrelloView,
       meta: { requiresTurno: true }
+    },{
+        path: '/qr',
+        name: 'QRCode',
+        component: QRView,
+        meta: { requiresTurno: true }
     },
     {
       path: '/inserisciprodotto',
@@ -59,13 +65,11 @@ router.beforeEach((to, from, next) => {
     return
   }
 
-  // Check if turno is selected
+  
   const turnoStore = useTurnoStore()
-  if (!turnoStore.turnoSelezionato) {
-    // Redirect to home if no turno is selected
+  if (turnoStore.turnoSelezionato === -1) {
     next({ name: 'home' })
   } else {
-    // Continue navigation if turno is selected
     next()
   }
 })

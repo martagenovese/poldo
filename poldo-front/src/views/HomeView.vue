@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import CardTurno from '@/components/CardTurno.vue'
 import { useTurnoStore } from '@/stores/turno'
 
@@ -11,7 +11,16 @@ onMounted(() => {
   console.log('Turni fetched:', turnoStore.turni)
 })
 
-const turni = turnoStore.turni
+const turni = computed(() => {
+  return turnoStore.turni.map(turno => ({
+    n: turno.n,
+    nome: turno.nome,
+    oraInizio: turno.oraInizio,
+    oraFine: turno.oraFine,
+    inizioRitiro: turno.inizioRitiro,
+    fineRitiro: turno.fineRitiro
+  }))
+})
 
 // Method for handling turno selection
 const selezionaTurno = (turno: number) => {
