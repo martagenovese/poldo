@@ -30,9 +30,9 @@ const onInit = async (promise: Promise<any>) => {
   try {
     await promise
   } catch (e) {
-    if (e.name === 'NotAllowedError') {
+    if (e === 'NotAllowedError') {
       error.value = 'Permesso camera negato'
-    } else if (e.name === 'NotFoundError') {
+    } else if (e === 'NotFoundError') {
       error.value = 'Nessuna camera disponibile'
     } else {
       error.value = 'Errore sconosciuto'
@@ -68,7 +68,6 @@ const handleOrder = () => {
           @decode="onDecode"
           @init="onInit"
           :camera="camera"
-          :track="paintOutline"
         >
           <div class="scan-overlay">
             <div class="viewfinder"></div>
