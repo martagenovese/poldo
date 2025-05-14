@@ -18,6 +18,7 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    allowedHosts: ['l.figliolo.it'],
     proxy: {
       '/api': {
         target: 'http://figliolo.it:5005',

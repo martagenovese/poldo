@@ -54,6 +54,7 @@ const hasItems = computed(() => items.value.length > 0)
 const totalPrice = computed(() => {
     return items.value.reduce((total, item) => {
         const product = allProducts.value.find(p => p.id === item.id)
+        if(!product) return total
         return total + (product.price * item.quantity)
     }, 0)
 })
@@ -221,9 +222,7 @@ getCart();
                             <div class="quantity-price">
                                 <QuantityControl :productId="item.id" :delete="false" :disabled="haveCart" />
                                 <span class="item-total">
-                                    €{{
-                                    (item.quantity * item.price).toFixed(2)
-                                    }}
+                                    €{{ item.price ? (item.quantity * item.price).toFixed(2) : '0.00' }}
                                 </span>
                             </div>
                         </div>

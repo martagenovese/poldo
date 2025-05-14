@@ -8,6 +8,7 @@ import ModificaView from '../views/Gestione/ProdottiView.vue'
 import OrdinazioniView from '@/views/Gestione/OrdinazioniView.vue'
 import OrdinazioniProf from '@/views/Gestione/OrdinazioniProf.vue'
 import QRView from '../views/QrView.vue'
+import LoginView from '@/views/LoginView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -16,6 +17,11 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView,
+    },
+    {
+      path: '/login',
+      name: 'login',
+      component: LoginView,
     },
     {
       path: '/prodotti',
