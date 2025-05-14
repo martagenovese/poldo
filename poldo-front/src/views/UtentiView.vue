@@ -103,9 +103,6 @@
               >
                 Sbanna
               </button>
-              <button class="btn edit" @click="editUser(user)">
-                Dettagli
-              </button>
             </td>
           </tr>
         </tbody>
@@ -204,14 +201,6 @@ export default {
       userStore.resetFilters();
     };
     
-    const editUser = async (user) => {
-      try {
-        await userStore.fetchUserById(user.idUtente);
-        showModal.value = true;
-      } catch (error) {
-        showAlert('Errore nel caricamento dei dettagli utente', 'error');
-      }
-    };
       const closeModal = () => {
       showModal.value = false;
       userStore.clearSelectedUser();
@@ -323,7 +312,6 @@ export default {
       banUser,
       unbanUser,
       changeRole,
-      editUser,
       closeModal,
       toggleUserStatus,
       saveUserChanges,
@@ -443,7 +431,7 @@ tr:last-child td {
 
 tr.banned {
   background-color: var(--red);
-  opacity: 0.15;
+  opacity: 0.9;
 }
 
 .status-active, .status-banned {
