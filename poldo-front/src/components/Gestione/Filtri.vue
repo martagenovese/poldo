@@ -152,8 +152,16 @@ const startEditing = async (type: ChangeType, item: PendingItem) => {
 
 const handleBlur = (item: PendingItem, type: ChangeType) => {
   item.editing = false
-  const newName = item.currentName.trim()
 
+  const refKey = `${item.originalName}-${item.isNew ? 'new' : 'existing'}`
+  const targetRef = type === 'ingredient'
+    ? ingredientRefs.get(refKey)
+    : tagRefs.get(refKey)
+  if (targetRef) {
+    targetRef.setAttribute('readonly', 'readonly')
+  }
+
+  const newName = item.currentName.trim()
   if (!newName) {
     if (item.isNew) {
       pendingChangesStore.removeFilterChange({ type, name: item.originalName })
@@ -165,12 +173,28 @@ const handleBlur = (item: PendingItem, type: ChangeType) => {
     updateFilter(type, item.originalName, newName)
   }
 
-  if (item.isNew) item.isNew = false
+  if (item.isNew) {
+    item.isNew = false
+  }
 }
 
 const handleKey = (event: KeyboardEvent, item: PendingItem, type: ChangeType) => {
-  if (event.key === 'Enter') handleBlur(item, type)
-  if (event.key === 'Escape') item.currentName = item.originalName
+  if (event.key === 'Enter') {
+    handleBlur(item, type)
+  }
+  if (event.key === 'Escape') {
+    item.currentName = item.originalName
+
+    const refKey = `${item.originalName}-${item.isNew ? 'new' : 'existing'}`
+    const targetRef = type === 'ingredient'
+      ? ingredientRefs.get(refKey)
+      : tagRefs.get(refKey)
+    if (targetRef) {
+      targetRef.setAttribute('readonly', 'readonly')
+    }
+
+    item.editing = false
+  }
 }
 
 // CRUD operations

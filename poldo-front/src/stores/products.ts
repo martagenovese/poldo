@@ -15,7 +15,7 @@ export interface Product {
 const API_CONFIG = {
   BASE_URL: 'http://localhost:5000/v1',
   TOKEN: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZEdlc3Rpb25lIjoxLCJydW9sbyI6Imdlc3RvcmUiLCJpZCI6MTksImlhdCI6MTc0NDMwNzg0MiwiZXhwIjoxNzc1ODY1NDQyfQ.HMNTe1h81A80p-BawzVj44zSBGBVMYZRdp_vDxE2j9k',
-  DEFAULT_IMAGE: 'https://lh3.googleusercontent.com/a/ACg8ocLPv09a9-uNbEG-ZfRm5bWQUlyLOpBaKxHz88de_c6vB8RvQ_Plrg=s96-c'
+  DEFAULT_IMAGE: 'http://localhost:5000/v1/prodotti/image/-1'
 }
 
 const headers = new Headers({
@@ -87,17 +87,15 @@ export const useProductsStore = defineStore('products', () => {
       )
 
       products.value = await Promise.all(raw.map(async (item) => {
-        const imageName = sanitizeFileName(item.nome)
-        const customImagePath = `/images/products/${imageName}.png`
-
-        const imageExists = await checkImageExists(customImagePath)
+        const productImageUrl = `${API_CONFIG.BASE_URL}/prodotti/image/${item.idProdotto}`
+        const imageExists = await checkImageExists(productImageUrl)
 
         return {
           id: item.idProdotto,
           title: item.nome,
           description: item.descrizione,
           ingredients: item.ingredienti,
-          imageSrc: imageExists ? customImagePath : API_CONFIG.DEFAULT_IMAGE,
+          imageSrc: imageExists ? productImageUrl : API_CONFIG.DEFAULT_IMAGE,
           price: parseFloat(item.prezzo),
           tags: item.tags,
           isActive: item.attivo === 1
@@ -111,13 +109,12 @@ export const useProductsStore = defineStore('products', () => {
 
   async function checkImageExists(url: string): Promise<boolean> {
     try {
-      const img = new Image()
-      await new Promise((resolve, reject) => {
-        img.onload = resolve
-        img.onerror = reject
-        img.src = url
+      const response = await fetch(url, {
+        headers: new Headers({
+          Authorization: `Bearer ${API_CONFIG.TOKEN}`
+        })
       })
-      return true
+      return response.ok
     } catch {
       return false
     }
