@@ -3,13 +3,17 @@ const pool = require('../utils/db');
 
 module.exports = {
     authenticateJWT: async (req, res, next) => {
-        const authHeader = req.headers.authorization;
+        // const authHeader = req.headers.authorization;
         
-        if (!authHeader) {
-            return res.sendStatus(401);
-        }
+        // if (!authHeader) {
+        //     return res.sendStatus(401);
+        // }
 
-        const token = authHeader.split(' ')[1];
+        //const token = authHeader.split(' ')[1];
+        const token = req.cookies.jwt;
+        if (!token) {
+            return res.status(401).json({ error: 'Token non fornito' });
+        }
         const connection = await pool.getConnection();
 
         try {
