@@ -17,13 +17,15 @@ defineProps<{
 const pageTitles = {
     home: 'Home',
     prodotti: 'Prodotti',
-    carrello: 'Carrello'
+    carrello: 'Carrello',
+    utenti: 'Utenti'
 } as const
 
 const navRoutes = [
     { name: 'Home', path: '/', requiresTurno: false },
     { name: 'Prodotti', path: '/prodotti', requiresTurno: true },
-    { name: 'Carrello', path: '/carrello', requiresTurno: true }
+    { name: 'Carrello', path: '/carrello', requiresTurno: true },
+    { name: 'Utenti', path: '/utenti', requiresTurno: false }
 ] as const
 
 const toggleMenu = () => showMenu.value = !showMenu.value

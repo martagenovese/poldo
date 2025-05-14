@@ -132,7 +132,7 @@ export default {
     const loadChartJS = async () => {
       if (!Chart) {
         try {
-          const module = await import('chart.js/auto');
+          //const module = await import('chart.js/auto');
           Chart = module.default;
         } catch (error) {
           console.error('Failed to load Chart.js:', error);
@@ -327,7 +327,7 @@ export default {
       if (!hasData.value) return;
       
       // Dynamically import the library
-      const { default: jsPDF } = await import('jspdf');
+      //const { default: jsPDF } = await import('jspdf');
       
       try {
         const doc = new jsPDF();
@@ -392,8 +392,8 @@ export default {
       
       try {
         // Dynamically import libraries
-        const { unparse } = await import('papaparse');
-        const { saveAs } = await import('file-saver');
+        // const { unparse } = await import('papaparse');
+        // const { saveAs } = await import('file-saver');
         
         let csvData = [];
         

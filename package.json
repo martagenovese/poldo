@@ -1,5 +1,7 @@
 {
   "dependencies": {
-    "axios": "^1.9.0"
+    "axios": "^1.9.0",
+    "vue-qrcode": "^2.2.2",
+    "vue-qrcode-reader": "^5.7.2"
   }
 }
